@@ -1,0 +1,6 @@
+The following things are included:
+
+* https://github.com/treno-io/product/pull/5111
+* https://github.com/treno-io/product/issues/5107
+
+And some other stuff.
