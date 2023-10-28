@@ -22,7 +22,26 @@ fn app() -> Result<(), error::Error> {
 fn unfurl<R: Read>(mut r: R) -> Result<(), error::Error> {
   let mut data = String::new();
   r.read_to_string(&mut data)?;
-  println!(">>> YO:\n{}", data);
+  let mut text: &str = &data;
+  while text.len() > 0 {
+    text = match text.find("https://") {
+      Some(x) => unfurl_url(&text, x)?,
+      None    => {
+        print!("{}", text);
+        &text[0..0]
+      },
+    };
+  }
   Ok(())
 }
 
+fn unfurl_url<'a>(data: &'a str, x: usize) -> Result<&'a str, error::Error> {
+  print!("{}", &data[..x]);
+  let data: &str = &data[x..];
+  let (url, rest) = match data.find(char::is_whitespace) {
+    Some(y) => (&data[..y], &data[y..]),
+    None    => (data, &data[0..0]),
+  };
+  print!("<<{}>>", url);
+  Ok(rest)
+}
