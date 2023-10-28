@@ -42,6 +42,13 @@ fn unfurl_url<'a>(data: &'a str, x: usize) -> Result<&'a str, error::Error> {
     Some(y) => (&data[..y], &data[y..]),
     None    => (data, &data[0..0]),
   };
-  print!("<<{}>>", url);
+
+  let url = url::Url::parse(url)?;
+  let host = match url.host_str() {
+    Some(host) => host,
+    None       => "<unknown>",
+  };
+  print!("<<{}>> ({})", url, host);
+
   Ok(rest)
 }

@@ -8,6 +8,7 @@ pub enum Error {
   IOError(io::Error),
   Utf8Error(str::Utf8Error),
   FromUtf8Error(string::FromUtf8Error),
+  UrlParseError(url::ParseError),
 }
 
 impl From<str::Utf8Error> for Error {
@@ -19,6 +20,12 @@ impl From<str::Utf8Error> for Error {
 impl From<string::FromUtf8Error> for Error {
   fn from(err: string::FromUtf8Error) -> Self {
     Self::FromUtf8Error(err)
+  }
+}
+
+impl From<url::ParseError> for Error {
+  fn from(err: url::ParseError) -> Self {
+    Self::UrlParseError(err)
   }
 }
 
@@ -34,6 +41,7 @@ impl fmt::Display for Error {
       Self::IOError(err) => err.fmt(f),
       Self::Utf8Error(err) => err.fmt(f),
       Self::FromUtf8Error(err) => err.fmt(f),
+      Self::UrlParseError(err) => err.fmt(f),
     }
   }
 }
