@@ -46,9 +46,16 @@ fn unfurl_url<'a>(data: &'a str, x: usize) -> Result<&'a str, error::Error> {
   let url = url::Url::parse(url)?;
   let host = match url.host_str() {
     Some(host) => host,
-    None       => "<unknown>",
+    None       => {
+      println!("{}", url);
+      return Ok(rest); // not a supported URL
+    },
   };
-  print!("<<{}>> ({})", url, host);
+
+  match host.to_lowercase().as_ref() {
+    "github.com" => print!("<<{}>> ({})", url, host),
+    _            => print!("<<{}>>", url),
+  }
 
   Ok(rest)
 }
