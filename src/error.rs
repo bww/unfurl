@@ -9,6 +9,8 @@ pub enum Error {
   Utf8Error(str::Utf8Error),
   FromUtf8Error(string::FromUtf8Error),
   UrlParseError(url::ParseError),
+  YamlParseError(serde_yaml::Error),
+  NotFound,
 }
 
 impl From<str::Utf8Error> for Error {
@@ -29,6 +31,12 @@ impl From<url::ParseError> for Error {
   }
 }
 
+impl From<serde_yaml::Error> for Error {
+  fn from(err: serde_yaml::Error) -> Self {
+    Self::YamlParseError(err)
+  }
+}
+
 impl From<io::Error> for Error {
   fn from(err: io::Error) -> Self {
     Self::IOError(err)
@@ -42,6 +50,8 @@ impl fmt::Display for Error {
       Self::Utf8Error(err) => err.fmt(f),
       Self::FromUtf8Error(err) => err.fmt(f),
       Self::UrlParseError(err) => err.fmt(f),
+      Self::YamlParseError(err) => err.fmt(f),
+      Self::NotFound => write!(f, "Not found"),
     }
   }
 }

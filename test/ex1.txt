@@ -5,3 +5,5 @@ The following things are included:
 * https://treno.atlassian.net/issues/TRENO-1234
 
 And some other stuff.
+
+https://github.com/treno-io/product/issues/5107
