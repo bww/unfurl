@@ -2,6 +2,8 @@ use std::fs;
 use std::io::Read;
 use std::env;
 
+use std::collections::BTreeMap;
+
 use serde::{Serialize, Deserialize};
 use serde_yaml;
 
@@ -9,13 +11,18 @@ use crate::error;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Service {
-  pub domain: String,
   pub auth: serde_yaml::Mapping,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
-  pub services: Vec<Service>,
+  services: BTreeMap<String, Service>,
+}
+
+impl Config {
+  pub fn get<'a>(&'a self, domain: &str) -> Option<&'a Service> {
+    self.services.get(domain)
+  }
 }
 
 pub fn load_default() -> Result<Config, error::Error> {
