@@ -20,6 +20,12 @@ struct GithubConfig {
   header: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct PullRequest {
+  number: usize,
+  title: String,
+}
+
 pub struct Github{
   client: blocking::Client,
   config: GithubConfig,
@@ -44,15 +50,22 @@ impl Service for Github {
       Some(name) => name.to_string_lossy(),
       None => return Err(error::Error::NotFound),
     };
-    let resp = self.client.get(&format!("https://api.github.com/repos/treno-io/product/pulls/{}", num))
+
+    let resp: blocking::Response = match self.client.get(&format!("https://api.github.com/repos/treno-io/product/pulls/{}", num))
       .header("Accept", "application/vnd.github+json")
       .header("User-Agent", &format!("Unfurl/{}", VERSION))
       .header("Authorization", &self.config.header)
-      .send()?.text()?;
+      .send() {
+        Ok(resp) => resp,
+        Err(err) => return Ok(format!("{} ({})", link, err)),
+    };
 
-    println!(">>> * >>> {}", resp);
+    let resp: PullRequest = match resp.json::<PullRequest>() {
+      Ok(resp) => resp,
+      Err(err) => return Ok(format!("{} ({})", link, err)),
+    };
 
-    Ok(format!("<<{}>> (Github!)", link))
+    Ok(format!("{} (#{})", resp.title, resp.number))
     // let conf = match conf.get(DOMAIN_GITHUB) {
     //   Some(conf) => Ok(format!("<<{}>> (Github! + {:?})", link, conf)),
     //   None       => Err(error::Error::NotFound),
