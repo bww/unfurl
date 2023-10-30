@@ -10,6 +10,7 @@ pub enum Error {
   FromUtf8Error(string::FromUtf8Error),
   UrlParseError(url::ParseError),
   YamlParseError(serde_yaml::Error),
+  ClientError(reqwest::Error),
   NotFound,
 }
 
@@ -37,6 +38,12 @@ impl From<serde_yaml::Error> for Error {
   }
 }
 
+impl From<reqwest::Error> for Error {
+  fn from(err: reqwest::Error) -> Self {
+    Self::ClientError(err)
+  }
+}
+
 impl From<io::Error> for Error {
   fn from(err: io::Error) -> Self {
     Self::IOError(err)
@@ -51,6 +58,7 @@ impl fmt::Display for Error {
       Self::FromUtf8Error(err) => err.fmt(f),
       Self::UrlParseError(err) => err.fmt(f),
       Self::YamlParseError(err) => err.fmt(f),
+      Self::ClientError(err) => err.fmt(f),
       Self::NotFound => write!(f, "Not found"),
     }
   }

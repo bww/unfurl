@@ -11,7 +11,7 @@ use crate::error;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Service {
-  pub auth: serde_yaml::Mapping,
+  pub auth: serde_yaml::Value,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]

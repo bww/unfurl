@@ -71,7 +71,7 @@ fn unfurl_url<'a>(conf: &config::Config, data: &'a str, x: usize) -> Result<&'a 
   };
 
   let svc: Option<Box<dyn service::Service>> = match host.to_lowercase().as_ref() {
-    service::DOMAIN_GITHUB => Some(Box::new(service::Github{})),
+    service::DOMAIN_GITHUB => Some(Box::new(service::Github::new(conf)?)),
     _                      => None,
   };
   match svc {
