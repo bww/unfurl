@@ -12,10 +12,15 @@ impl Match {
       vars: vars,
     }
   }
+
   fn new_empty() -> Match {
     Match{
       vars: BTreeMap::new(),
     }
+  }
+
+  pub fn get<'a>(&'a self, name: &str) -> Option<&'a String> {
+    self.vars.get(name)
   }
 }
 

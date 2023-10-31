@@ -30,6 +30,7 @@ struct PullRequest {
 pub struct Github{
   client: blocking::Client,
   config: GithubConfig,
+  pattern_pr: route::Pattern,
 }
 
 impl Github {
@@ -41,18 +42,23 @@ impl Github {
     Ok(Github{
       client: blocking::Client::new(),
       config: serde_yaml::from_value(conf.auth.clone())?,
+      pattern_pr: route::Pattern::new("/{org}/{repo}/pull/{num}"),
     })
   }
 }
 
+
 impl Service for Github {
   fn unfurl(&self, conf: &config::Config, link: &url::Url) -> Result<String, error::Error> {
-    let pr = match route::Pattern::new("/{org}/{repo}/pull/{num}").match_path(link.to_string()) {
+    let pr = match self.pattern_pr.match_path(link.path()) {
       Some(pr) => pr,
-      None => return Err(error::Error::NotFound),
+      None     => return Ok(link.to_string()),
+    };
+    let num = match pr.get("num") {
+      Some(num) => num,
+      None      => return Ok(link.to_string()),
     };
 
-    let num = match pr.
     let resp: blocking::Response = match self.client.get(&format!("https://api.github.com/repos/treno-io/product/pulls/{}", num))
       .header("Accept", "application/vnd.github+json")
       .header("User-Agent", &format!("Unfurl/{}", VERSION))
