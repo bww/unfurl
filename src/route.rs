@@ -86,13 +86,24 @@ mod tests {
   #[test]
   fn match_path() {
     let p = Pattern::new("a/b");
-    assert_eq!(None, p.match_path("/a/c"));
-    assert_eq!(None, p.match_path("/a/c/"));
     assert_eq!(None, p.match_path("a/c"));
-    assert_eq!(Some(Match::new_empty()), p.match_path("a/b"));
+    assert_eq!(None, p.match_path("/a/b"));
+    assert_eq!(None, p.match_path("/a/b/"));
 
+    let p = Pattern::new("/");
+    assert_eq!(Some(Match::new_empty()), p.match_path("/"));
+    let p = Pattern::new("a/b");
+    assert_eq!(Some(Match::new_empty()), p.match_path("a/b"));
+    let p = Pattern::new("/a/b");
+    assert_eq!(Some(Match::new_empty()), p.match_path("/a/b"));
     let p = Pattern::new("a/{b}");
     assert_eq!(Some(Match::new(BTreeMap::from([("b".to_string(), "Hello".to_string())]))), p.match_path("a/Hello"));
+
+    let p = Pattern::new("/{a}/{b}");
+    assert_eq!(Some(Match::new(BTreeMap::from([
+      ("a".to_string(), "Anything".to_string()),
+      ("b".to_string(), "Hello".to_string()),
+    ]))), p.match_path("/Anything/Hello"));
   }
 
 }
