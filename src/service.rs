@@ -7,6 +7,7 @@ use serde_yaml;
 
 use crate::error;
 use crate::config;
+use crate::route;
 
 pub const DOMAIN_GITHUB: &str = "github.com";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -46,11 +47,12 @@ impl Github {
 
 impl Service for Github {
   fn unfurl(&self, conf: &config::Config, link: &url::Url) -> Result<String, error::Error> {
-    let num = match path::Path::new(link.path()).file_name() {
-      Some(name) => name.to_string_lossy(),
+    let pr = match route::Pattern::new("/{org}/{repo}/pull/{num}").match_path(link.to_string()) {
+      Some(pr) => pr,
       None => return Err(error::Error::NotFound),
     };
 
+    let num = match pr.
     let resp: blocking::Response = match self.client.get(&format!("https://api.github.com/repos/treno-io/product/pulls/{}", num))
       .header("Accept", "application/vnd.github+json")
       .header("User-Agent", &format!("Unfurl/{}", VERSION))

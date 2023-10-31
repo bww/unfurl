@@ -84,6 +84,14 @@ mod tests {
   use super::*;
   
   #[test]
+  fn equality() {
+    let a = Pattern::new("a/b");
+    assert_eq!(a, a);
+    let b = Pattern::new("a/b");
+    assert_eq!(a, b);
+  }
+
+  #[test]
   fn match_path() {
     let p = Pattern::new("a/b");
     assert_eq!(None, p.match_path("a/c"));
