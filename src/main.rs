@@ -7,6 +7,7 @@ use clap::Parser;
 mod error;
 mod config;
 mod service;
+mod route;
 
 #[derive(Parser, Debug, Clone)]
 #[clap(author, version, about, long_about = None)]
