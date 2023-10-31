@@ -49,27 +49,27 @@ impl Github {
     })
   }
 
+  fn get(&self, url: &str) -> blocking::RequestBuilder {
+    self.client.get(url)
+      .header("Accept", "application/vnd.github+json")
+      .header("User-Agent", &format!("Unfurl/{}", VERSION))
+      .header("Authorization", &self.config.header)
+  }
+
   fn unfurl_pr(&self, conf: &config::Config, link: &url::Url, mat: route::Match) -> Result<String, error::Error> {
     let num = match mat.get("num") {
       Some(num) => num,
       None      => return Ok(link.to_string()),
     };
-
-    let resp: blocking::Response = match self.client.get(&format!("https://api.github.com/repos/treno-io/product/pulls/{}", num))
-      .header("Accept", "application/vnd.github+json")
-      .header("User-Agent", &format!("Unfurl/{}", VERSION))
-      .header("Authorization", &self.config.header)
-      .send() {
-        Ok(resp) => resp,
-        Err(err) => return Ok(format!("{} ({})", link, err)),
-    };
-
-    let resp: GithubIssue = match resp.json::<GithubIssue>() {
-      Ok(resp) => resp,
+    let rsp: blocking::Response = match self.get(&format!("https://api.github.com/repos/treno-io/product/pulls/{}", num)).send() {
+      Ok(rsp)  => rsp,
       Err(err) => return Ok(format!("{} ({})", link, err)),
     };
-
-    Ok(format!("{} (#{})", resp.title, resp.number))
+    let rsp: GithubIssue = match rsp.json::<GithubIssue>() {
+      Ok(rsp)  => rsp,
+      Err(err) => return Ok(format!("{} ({})", link, err)),
+    };
+    Ok(format!("{} (#{})", rsp.title, rsp.number))
   }
 
   fn unfurl_issue(&self, conf: &config::Config, link: &url::Url, mat: route::Match) -> Result<String, error::Error> {
@@ -77,22 +77,15 @@ impl Github {
       Some(num) => num,
       None      => return Ok(link.to_string()),
     };
-
-    let resp: blocking::Response = match self.client.get(&format!("https://api.github.com/repos/treno-io/product/issues/{}", num))
-      .header("Accept", "application/vnd.github+json")
-      .header("User-Agent", &format!("Unfurl/{}", VERSION))
-      .header("Authorization", &self.config.header)
-      .send() {
-        Ok(resp) => resp,
-        Err(err) => return Ok(format!("{} ({})", link, err)),
-    };
-
-    let resp: GithubIssue = match resp.json::<GithubIssue>() {
-      Ok(resp) => resp,
+    let rsp: blocking::Response = match self.get(&format!("https://api.github.com/repos/treno-io/product/issues/{}", num)).send() {
+      Ok(rsp)  => rsp,
       Err(err) => return Ok(format!("{} ({})", link, err)),
     };
-
-    Ok(format!("{} (#{})", resp.title, resp.number))
+    let rsp: GithubIssue = match rsp.json::<GithubIssue>() {
+      Ok(rsp)  => rsp,
+      Err(err) => return Ok(format!("{} ({})", link, err)),
+    };
+    Ok(format!("{} (#{})", rsp.title, rsp.number))
   }
 }
 
