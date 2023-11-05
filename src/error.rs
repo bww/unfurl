@@ -2,6 +2,7 @@ use std::io;
 use std::fmt;
 use std::str;
 use std::string;
+use std::sync::mpsc;
 
 #[derive(Debug)]
 pub enum Error {
@@ -11,6 +12,8 @@ pub enum Error {
   UrlParseError(url::ParseError),
   YamlParseError(serde_yaml::Error),
   ClientError(reqwest::Error),
+  RecvError(mpsc::RecvError),
+  SendError,
   NotFound,
 }
 
@@ -44,6 +47,12 @@ impl From<reqwest::Error> for Error {
   }
 }
 
+impl From<mpsc::RecvError> for Error {
+  fn from(err: mpsc::RecvError) -> Self {
+    Self::RecvError(err)
+  }
+}
+
 impl From<io::Error> for Error {
   fn from(err: io::Error) -> Self {
     Self::IOError(err)
@@ -59,6 +68,8 @@ impl fmt::Display for Error {
       Self::UrlParseError(err) => err.fmt(f),
       Self::YamlParseError(err) => err.fmt(f),
       Self::ClientError(err) => err.fmt(f),
+      Self::RecvError(err) => err.fmt(f),
+      Self::SendError => write!(f, "Send error"),
       Self::NotFound => write!(f, "Not found"),
     }
   }

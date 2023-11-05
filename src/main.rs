@@ -8,6 +8,7 @@ mod error;
 mod config;
 mod service;
 mod route;
+mod fetch;
 
 #[derive(Parser, Debug, Clone)]
 #[clap(author, version, about, long_about = None)]
@@ -41,6 +42,10 @@ fn app(opts: &Options) -> Result<(), error::Error> {
 fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<(), error::Error> {
   let mut data = String::new();
   r.read_to_string(&mut data)?;
+
+  let svc = fetch::Service::instance();
+  svc.send("Yessir".to_string())?;
+
   let mut text: &str = &data;
   while text.len() > 0 {
     text = match text.find("https://") {
@@ -51,6 +56,7 @@ fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<()
       },
     };
   }
+
   Ok(())
 }
 
