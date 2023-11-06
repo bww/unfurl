@@ -9,6 +9,7 @@ use crate::error;
 static SERVICE: OnceCell<Service> = OnceCell::new();
 
 pub struct Service {
+  rx: mpsc::Receiver<String>,
   tx: mpsc::Sender<String>,
 }
 
@@ -20,11 +21,13 @@ impl Service {
   }
 
   fn new() -> Service {
-    let (tx, rx) = mpsc::channel();
+    let (w_tx, w_rx) = mpsc::channel();
+    let (r_tx, r_rx) = mpsc::channel();
     let svc = Service{
-      tx: tx,
+      rx: r_rx,
+      tx: w_tx,
     };
-    thread::spawn(|| { Service::run(rx) });
+    thread::spawn(|| { Service::run(w_rx, r_tx) });
     svc
   }
 
@@ -35,7 +38,11 @@ impl Service {
     }
   }
 
-  fn run(rx: mpsc::Receiver<String>) {
+  pub fn recv(&self) -> Result<String, error::Error> {
+    self.rx.recv()
+  }
+
+  fn run(rx: mpsc::Receiver<String>, tx: mpsc::Sender<String>) {
     tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
       loop {
         let x = match rx.recv() {
@@ -45,7 +52,13 @@ impl Service {
             return;
           },
         };
-        println!("Hello world {}", x);
+        match tx.send(x) {
+          Ok(_)    => Ok(()),
+          Err(err) => {
+            println!("*** Could not send: {}", err);
+            return;
+          },
+        };
       }
     }) 
   }

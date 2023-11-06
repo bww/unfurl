@@ -45,6 +45,7 @@ fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<()
 
   let svc = fetch::Service::instance();
   svc.send("Yessir".to_string())?;
+  println!(">>> >>> >>> {}", svc.read()?);
 
   let mut text: &str = &data;
   while text.len() > 0 {
