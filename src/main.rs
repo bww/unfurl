@@ -44,8 +44,14 @@ fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<()
   r.read_to_string(&mut data)?;
 
   let svc = fetch::Service::instance();
-  svc.send("Yessir".to_string())?;
-  println!(">>> >>> >>> {}", svc.read()?);
+  let rsp = svc.send(vec![
+    "https://api.ipify.org".to_string(),
+    "https://api.ipify.org".to_string(),
+    "https://api.ipify.org".to_string(),
+    "https://api.ipify.org".to_string(),
+    "https://api.ipify.org".to_string()
+  ])?;
+  println!(">>> >>> >>> {}", rsp.recv()?);
 
   let mut text: &str = &data;
   while text.len() > 0 {
