@@ -12,11 +12,13 @@ const CONCURRENT_REQUESTS: usize  = 3;
 
 static SERVICE: OnceCell<Service> = OnceCell::new();
 
+#[derive(Debug)]
 struct Request {
   key: String,
   req: reqwest::RequestBuilder,
 }
 
+#[derive(Debug)]
 struct Requests {
   tx: mpsc::Sender<Vec<Result<Response, error::Error>>>,
   reqs: Vec<Request>,
