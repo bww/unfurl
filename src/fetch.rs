@@ -1,17 +1,36 @@
 use std::thread;
 use std::sync::mpsc;
 
+use bytes::Bytes;
 use futures::{stream, StreamExt};
 use reqwest;
 use once_cell::sync::OnceCell;
 
 use crate::error;
 
+const CONCURRENT_REQUESTS: usize  = 3;
+
 static SERVICE: OnceCell<Service> = OnceCell::new();
 
 struct Message {
-  tx: mpsc::Sender<String>,
+  tx: mpsc::Sender<Vec<Result<Response, error::Error>>>,
   urls: Vec<String>,
+}
+
+#[derive(Debug)]
+pub struct Response {
+  url: String,
+  data: Bytes,
+}
+
+impl Response {
+  pub fn url<'a>(&'a self) -> &'a str {
+    &self.url
+  }
+
+  pub fn data<'a>(&'a self) -> &'a Bytes {
+    &self.data
+  }
 }
 
 pub struct Service {
@@ -30,7 +49,7 @@ impl Service {
     svc
   }
 
-  pub fn send(&self, urls: Vec<String>) -> Result<mpsc::Receiver<String>, error::Error> {
+  pub fn send(&self, urls: Vec<String>) -> Result<mpsc::Receiver<Vec<Result<Response, error::Error>>>, error::Error> {
     let (p_tx, p_rx) = mpsc::channel();
     match self.tx.send(Message{tx: p_tx, urls: urls}) {
       Ok(_)    => Ok(p_rx),
@@ -48,13 +67,8 @@ impl Service {
             return;
           },
         };
-        for rsp in fetch_n(3, x.urls).await {
-          match rsp {
-            Ok(rsp)  => println!(">>> COOL: {:?}", rsp.bytes().await),
-            Err(err) => println!(">>> NAH BARF: {}", err),
-          }
-        }
-        if let Err(err) = x.tx.send("Ok...".to_string()) {
+        let rsps = fetch_n(CONCURRENT_REQUESTS, x.urls).await;
+        if let Err(err) = x.tx.send(rsps) {
           println!("*** Could not send: {}", err);
           return;
         }
@@ -63,25 +77,21 @@ impl Service {
   }
 }
 
-async fn fetch_n(n: usize, urls: Vec<String>) -> Vec<Result<reqwest::Response, error::Error>> {
+async fn fetch_n(n: usize, urls: Vec<String>) -> Vec<Result<Response, error::Error>> {
   let client = reqwest::Client::new();
   
   let rsps = stream::iter(urls)
     .map(|url| {
       let client = &client;
       async move {
-        Ok(client.get(url).send().await?)
+        Ok(Response{
+          url: url.clone(),
+          data: client.get(url).send().await?.bytes().await?,
+        })
       }
     })
     .buffer_unordered(n);
 
   rsps.collect().await
-  // bodies
-  //   .for_each(|b| async {
-  //     match b {
-  //       Ok(b) => println!("Got {} bytes", b.len()),
-  //       Err(e) => eprintln!("Got an error: {}", e),
-  //     }
-  //   }).await;
 }
 
