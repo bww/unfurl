@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::error;
 
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -5,6 +7,16 @@ pub enum Token<'a> {
   Text(&'a str),
   URL(&'a str),
   EOF,
+}
+
+impl<'a> fmt::Display for Token<'a> {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::Text(text) => write!(f, "{}", text),
+      Self::URL(url) => write!(f, "<{}>", url),
+      Self::EOF => write!(f, "%"),
+    }
+  }
 }
 
 pub fn next<'a>(text: &'a str) -> (Token<'a>, &'a str) {

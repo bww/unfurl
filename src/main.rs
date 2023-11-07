@@ -45,24 +45,24 @@ fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<()
   r.read_to_string(&mut data)?;
 
   let svc = fetch::Service::instance();
-  let rx = svc.fetch_urls(vec![
-    "https://api.ipify.orz".to_string(),
-    "https://api.ipify.org".to_string(),
-    "https://api.ipify.org".to_string(),
-    "https://api.ipify.org".to_string(),
-    "https://api.ipify.org".to_string()
-  ])?;
-  println!(">>> >>> >>> {:?}", rx.recv()?);
+  // let rx = svc.fetch_urls(vec![
+  //   "https://api.ipify.orz".to_string(),
+  //   "https://api.ipify.org".to_string(),
+  //   "https://api.ipify.org".to_string(),
+  //   "https://api.ipify.org".to_string(),
+  //   "https://api.ipify.org".to_string()
+  // ])?;
+  // println!(">>> >>> >>> {:?}", rx.recv()?);
 
-  let text = data;
+  let mut text: &str = &data;
   loop {
-    let (tok, text) = parse::next(&text);
+    let (tok, rest) = parse::next(text);
     match tok {
-      parse::Token::Text(text) => println!(">>> {:?}", text),
-      parse::Token::URL(url) => println!(">>> {:?}", url),
-      parse::Token::EOF => println!(">>> EOF"),
+      parse::Token::Text(text) => print!("{}", text),
+      parse::Token::URL(url) => print!("<{}>", url),
+      parse::Token::EOF => break,
     };
-     
+    text = rest;
   }
 
 //  let mut texts: Vec<&str> = Vec::new();
