@@ -12,20 +12,25 @@ const CONCURRENT_REQUESTS: usize  = 3;
 
 static SERVICE: OnceCell<Service> = OnceCell::new();
 
-struct Message {
+struct Request {
+  key: String,
+  req: reqwest::RequestBuilder,
+}
+
+struct Requests {
   tx: mpsc::Sender<Vec<Result<Response, error::Error>>>,
-  urls: Vec<String>,
+  reqs: Vec<Request>,
 }
 
 #[derive(Debug)]
 pub struct Response {
-  url: String,
+  key: String,
   data: Bytes,
 }
 
 impl Response {
-  pub fn url<'a>(&'a self) -> &'a str {
-    &self.url
+  pub fn key<'a>(&'a self) -> &'a str {
+    &self.key
   }
 
   pub fn data<'a>(&'a self) -> &'a Bytes {
@@ -34,7 +39,8 @@ impl Response {
 }
 
 pub struct Service {
-  tx: mpsc::Sender<Message>,
+  client: reqwest::Client,
+  tx: mpsc::Sender<Requests>,
 }
 
 impl Service {
@@ -44,20 +50,33 @@ impl Service {
 
   fn new() -> Service {
     let (q_tx, q_rx) = mpsc::channel();
-    let svc = Service{tx: q_tx};
-    thread::spawn(|| { Service::run(q_rx) });
+    let svc = Service{
+      client: reqwest::Client::new(),
+      tx: q_tx,
+    };
+    thread::spawn(|| { Service::run(reqwest::Client::new(), q_rx) });
     svc
   }
 
-  pub fn send(&self, urls: Vec<String>) -> Result<mpsc::Receiver<Vec<Result<Response, error::Error>>>, error::Error> {
+  pub fn fetch_urls(&self, urls: Vec<String>) -> Result<mpsc::Receiver<Vec<Result<Response, error::Error>>>, error::Error> {
+    self.fetch_requests(urls.iter().map(|e| {
+      Request{
+        key: e.to_string(),
+        req: self.client.get(e),
+      }
+    }).collect())
+  }
+
+  pub fn fetch_requests(&self, reqs: Vec<Request>) -> Result<mpsc::Receiver<Vec<Result<Response, error::Error>>>, error::Error> {
     let (p_tx, p_rx) = mpsc::channel();
-    match self.tx.send(Message{tx: p_tx, urls: urls}) {
+    match self.tx.send(Requests{tx: p_tx, reqs: reqs}) {
       Ok(_)    => Ok(p_rx),
       Err(err) => Err(error::Error::SendError),
     }
   }
 
-  fn run(rx: mpsc::Receiver<Message>) {
+  fn run(client: reqwest::Client, rx: mpsc::Receiver<Requests>) {
+    let client = &client;
     tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
       loop {
         let x = match rx.recv() {
@@ -67,7 +86,7 @@ impl Service {
             return;
           },
         };
-        let rsps = fetch_n(CONCURRENT_REQUESTS, x.urls).await;
+        let rsps = fetch_n(client, CONCURRENT_REQUESTS, x.reqs).await;
         if let Err(err) = x.tx.send(rsps) {
           println!("*** Could not send: {}", err);
           return;
@@ -77,21 +96,19 @@ impl Service {
   }
 }
 
-async fn fetch_n(n: usize, urls: Vec<String>) -> Vec<Result<Response, error::Error>> {
-  let client = reqwest::Client::new();
-  
-  let rsps = stream::iter(urls)
-    .map(|url| {
+async fn fetch_n(client: &reqwest::Client, n: usize, reqs: Vec<Request>) -> Vec<Result<Response, error::Error>> {
+  stream::iter(reqs)
+    .map(|req| {
       let client = &client;
       async move {
         Ok(Response{
-          url: url.clone(),
-          data: client.get(url).send().await?.bytes().await?,
+          key: req.key.clone(),
+          data: req.req.send().await?.bytes().await?,
         })
       }
     })
-    .buffer_unordered(n);
-
-  rsps.collect().await
+    .buffer_unordered(n)
+    .collect()
+    .await
 }
 
