@@ -4,9 +4,13 @@ use crate::error;
 enum Token<'a> {
   Text(&'a str),
   URL(&'a str),
+  EOF,
 }
 
 fn next<'a>(text: &'a str) -> (Token<'a>, &'a str) {
+  if text.len() == 0 {
+    return (Token::EOF, "");
+  }
   let x = match text.find("https://") {
     Some(x) => x,
     None    => return (Token::Text(text), ""),
@@ -37,7 +41,7 @@ mod tests {
     assert_eq!(Token::Text(" and then trailing."), tok);
     assert_eq!("", text);
     let (tok, text) = next(text);
-    assert_eq!(Token::Text(""), tok);
+    assert_eq!(Token::EOF, tok);
     assert_eq!("", text);
   }
 

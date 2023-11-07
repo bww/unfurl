@@ -54,6 +54,16 @@ fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<()
   ])?;
   println!(">>> >>> >>> {:?}", rx.recv()?);
 
+  let text = data;
+  loop {
+    let (tok, text) = match parse::next(text) {
+      parse::Token::Text(text) => println!(">>> {:?}", text),
+      parse::Token::URL(url) => println!(">>> {:?}", url),
+      parse::Token::EOF => println!(">>> EOF"),
+    };
+     
+  }
+
 //  let mut texts: Vec<&str> = Vec::new();
 //  let mut urls: Vec<&str> = Vec::new();
 //  let mut text: &str = &data;
