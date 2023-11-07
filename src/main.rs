@@ -56,7 +56,8 @@ fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<()
 
   let text = data;
   loop {
-    let (tok, text) = match parse::next(text) {
+    let (tok, text) = parse::next(&text);
+    match tok {
       parse::Token::Text(text) => println!(">>> {:?}", text),
       parse::Token::URL(url) => println!(">>> {:?}", url),
       parse::Token::EOF => println!(">>> EOF"),

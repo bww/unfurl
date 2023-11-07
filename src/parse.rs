@@ -1,13 +1,13 @@
 use crate::error;
 
 #[derive(Debug, PartialEq, PartialOrd)]
-enum Token<'a> {
+pub enum Token<'a> {
   Text(&'a str),
   URL(&'a str),
   EOF,
 }
 
-fn next<'a>(text: &'a str) -> (Token<'a>, &'a str) {
+pub fn next<'a>(text: &'a str) -> (Token<'a>, &'a str) {
   if text.len() == 0 {
     return (Token::EOF, "");
   }
