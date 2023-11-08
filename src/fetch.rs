@@ -13,21 +13,30 @@ const CONCURRENT_REQUESTS: usize  = 3;
 static SERVICE: OnceCell<Service> = OnceCell::new();
 
 #[derive(Debug)]
-struct Request {
+pub struct Request {
   key: String,
   req: reqwest::RequestBuilder,
 }
 
+impl Request{
+  pub fn new(key: &str, req: reqwest::RequestBuilder) -> Self {
+    Request{
+      key: key.to_string(),
+      req: req,
+    }
+  }
+}
+
 #[derive(Debug)]
 struct Requests {
-  tx: mpsc::Sender<Vec<Result<Response, error::Error>>>,
+  tx: mpsc::Sender<Vec<Response>>,
   reqs: Vec<Request>,
 }
 
 #[derive(Debug)]
 pub struct Response {
   key: String,
-  data: Bytes,
+  data: Result<Bytes, error::Error>,
 }
 
 impl Response {
@@ -35,7 +44,7 @@ impl Response {
     &self.key
   }
 
-  pub fn data<'a>(&'a self) -> &'a Bytes {
+  pub fn data<'a>(&'a self) -> &'a Result<Bytes, error::Error> {
     &self.data
   }
 }
@@ -60,7 +69,7 @@ impl Service {
     svc
   }
 
-  pub fn fetch_urls(&self, urls: Vec<String>) -> Result<mpsc::Receiver<Vec<Result<Response, error::Error>>>, error::Error> {
+  pub fn fetch_urls(&self, urls: Vec<String>) -> Result<mpsc::Receiver<Vec<Response>>, error::Error> {
     self.fetch_requests(urls.iter().map(|e| {
       Request{
         key: e.to_string(),
@@ -69,7 +78,7 @@ impl Service {
     }).collect())
   }
 
-  pub fn fetch_requests(&self, reqs: Vec<Request>) -> Result<mpsc::Receiver<Vec<Result<Response, error::Error>>>, error::Error> {
+  pub fn fetch_requests(&self, reqs: Vec<Request>) -> Result<mpsc::Receiver<Vec<Response>>, error::Error> {
     let (p_tx, p_rx) = mpsc::channel();
     match self.tx.send(Requests{tx: p_tx, reqs: reqs}) {
       Ok(_)    => Ok(p_rx),
@@ -98,15 +107,21 @@ impl Service {
   }
 }
 
-async fn fetch_n(client: &reqwest::Client, n: usize, reqs: Vec<Request>) -> Vec<Result<Response, error::Error>> {
+async fn fetch_n(client: &reqwest::Client, n: usize, reqs: Vec<Request>) -> Vec<Response> {
   stream::iter(reqs)
     .map(|req| {
       let client = &client;
       async move {
-        Ok(Response{
+        Response{
           key: req.key.clone(),
-          data: req.req.send().await?.bytes().await?,
-        })
+          data: match req.req.send().await {
+            Err(err) => Err(err.into()),
+            Ok(rsp)  => match rsp.bytes().await {
+              Ok(data) => Ok(data),
+              Err(err) => Err(err.into()),
+            },
+          }
+        }
       }
     })
     .buffer_unordered(n)

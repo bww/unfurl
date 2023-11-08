@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::error;
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token<'a> {
   Text(&'a str),
   URL(&'a str),

@@ -19,6 +19,21 @@ pub trait Service {
   fn format(&self, conf: &config::Config, link: &url::Url, rsp: fetch::Response) -> Result<String, error::Error>;
 }
 
+pub fn find(conf: &config::Config, url: &str) -> Result<Option<(Box<dyn Service>, url::Url)>, error::Error> {
+  let url = match url::Url::parse(url) {
+    Ok(url)  => url,
+    Err(err) => return Ok(None),
+  };
+  let host = match url.host_str() {
+    Some(host) => host,
+    None       => return Ok(None),
+  };
+  match host.to_lowercase().as_ref() {
+    DOMAIN_GITHUB => Ok(Some((Box::new(Github::new(conf)?), url))),
+    _             => Ok(None)
+  }
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct GithubConfig {
   header: String,
@@ -67,7 +82,11 @@ impl Github {
   }
 
   fn format_pr(&self, conf: &config::Config, link: &url::Url, rsp: fetch::Response) -> Result<String, error::Error> {
-    let rsp: GithubIssue = match serde_json::from_slice(rsp.data().as_ref()) {
+    let data = match rsp.data() {
+      Ok(data) => data,
+      Err(err) => return Ok(format!("{} ({})", link, err)),
+    };
+    let rsp: GithubIssue = match serde_json::from_slice(data.as_ref()) {
       Ok(rsp)  => rsp,
       Err(err) => return Ok(format!("{} ({})", link, err)),
     };
@@ -82,7 +101,11 @@ impl Github {
   }
 
   fn format_issue(&self, conf: &config::Config, link: &url::Url, rsp: fetch::Response) -> Result<String, error::Error> {
-    let rsp: GithubIssue = match serde_json::from_slice(rsp.data().as_ref()) {
+    let data = match rsp.data() {
+      Ok(data) => data,
+      Err(err) => return Ok(format!("{} ({})", link, err)),
+    };
+    let rsp: GithubIssue = match serde_json::from_slice(data.as_ref()) {
       Ok(rsp)  => rsp,
       Err(err) => return Ok(format!("{} ({})", link, err)),
     };
