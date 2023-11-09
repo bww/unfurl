@@ -2,6 +2,10 @@
 name = "unfurl"
 version = "0.1.0"
 edition = "2021"
+description = "A tool for expanding links in text"
+repository = "https://github.com/bww/unfurl"
+readme = "README.md"
+license = "BSD-3-Clause"
 
 [dependencies]
 url = "2.4.1"
