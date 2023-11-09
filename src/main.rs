@@ -61,9 +61,12 @@ fn unfurl<R: Read>(_opts: &Options, conf: &config::Config, mut r: R) -> Result<(
       parse::Token::EOF       => break,
       parse::Token::Text(_)   => toks.push(tok.clone()),
       parse::Token::URL(text) => match service::find(conf, text)? {
-        Some((svc, url)) => {
-          urls.push(fetch::Request::new(text, svc.request(conf, &url)?));
-          toks.push(tok.clone());
+        Some((svc, url)) => match svc.request(conf, &url) {
+          Ok(req) => {
+            urls.push(fetch::Request::new(text, svc.request(conf, &url)?));
+            toks.push(tok.clone());
+          },
+          Err(err) => toks.push(parse::Token::Text(text)), // convert to text
         },
         None => toks.push(parse::Token::Text(text)), // convert to text
       },

@@ -3,7 +3,7 @@ use std::io::Read;
 use std::env;
 use std::path;
 
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use serde::{Serialize, Deserialize};
 use serde_yaml;
@@ -17,14 +17,14 @@ pub struct Service {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
-  #[serde(default = "BTreeMap::new")]
-  services: BTreeMap<String, Service>,
+  #[serde(default = "HashMap::new")]
+  services: HashMap<String, Service>,
 }
 
 impl Config {
   pub fn new() -> Config {
     Config{
-      services: BTreeMap::new(),
+      services: HashMap::new(),
     }
   }
 

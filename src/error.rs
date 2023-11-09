@@ -13,8 +13,10 @@ pub enum Error {
   YamlParseError(serde_yaml::Error),
   ClientError(reqwest::Error),
   RecvError(mpsc::RecvError),
+  AddrError,
   SendError,
   NotFound,
+  UnboundVariable(String),
 }
 
 impl From<str::Utf8Error> for Error {
@@ -53,6 +55,12 @@ impl From<mpsc::RecvError> for Error {
   }
 }
 
+impl From<addr::error::Error<'_>> for Error {
+  fn from(_: addr::error::Error<'_>) -> Self {
+    Self::AddrError
+  }
+}
+
 impl From<io::Error> for Error {
   fn from(err: io::Error) -> Self {
     Self::IOError(err)
@@ -69,8 +77,10 @@ impl fmt::Display for Error {
       Self::YamlParseError(err) => err.fmt(f),
       Self::ClientError(err) => err.fmt(f),
       Self::RecvError(err) => err.fmt(f),
+      Self::AddrError => write!(f, "Address error"),
       Self::SendError => write!(f, "Send error"),
       Self::NotFound => write!(f, "Not found"),
+      Self::UnboundVariable(name) => write!(f, "Unbound variable: {}", name),
     }
   }
 }

@@ -66,9 +66,9 @@ impl Github {
 
   fn request_pr(&self, _conf: &config::Config, _link: &url::Url, mat: route::Match) -> Result<reqwest::RequestBuilder, error::Error> {
     Ok(self.get(&format!("https://api.github.com/repos/{}/{}/pulls/{}",
-      mat.get("org").ok_or(error::Error::NotFound)?,
-      mat.get("repo").ok_or(error::Error::NotFound)?,
-      mat.get("num").ok_or(error::Error::NotFound)?
+      mat.get("org").ok_or(error::Error::UnboundVariable("org".to_string()))?,
+      mat.get("repo").ok_or(error::Error::UnboundVariable("repo".to_string()))?,
+      mat.get("num").ok_or(error::Error::UnboundVariable("num".to_string()))?,
     )))
   }
 
@@ -86,9 +86,9 @@ impl Github {
 
   fn request_issue(&self, _conf: &config::Config, _link: &url::Url, mat: route::Match) -> Result<reqwest::RequestBuilder, error::Error> {
     Ok(self.get(&format!("https://api.github.com/repos/{}/{}/issues/{}",
-      mat.get("org").ok_or(error::Error::NotFound)?,
-      mat.get("repo").ok_or(error::Error::NotFound)?,
-      mat.get("num").ok_or(error::Error::NotFound)?
+      mat.get("org").ok_or(error::Error::UnboundVariable("org".to_string()))?,
+      mat.get("repo").ok_or(error::Error::UnboundVariable("repo".to_string()))?,
+      mat.get("num").ok_or(error::Error::UnboundVariable("num".to_string()))?,
     )))
   }
 
