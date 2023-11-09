@@ -66,7 +66,6 @@ impl Jira {
     if let Some(header) = &self.config.header {
       builder = builder.header("Authorization", header);
     }
-    println!(">>>>>>>>>>>>>>>>>>>>> CONF {:?}", builder);
     builder
   }
 
