@@ -33,7 +33,13 @@ fn main() {
 }
 
 fn app(opts: &Options) -> Result<(), error::Error> {
-  let conf = config::load_default()?;
+  let conf = match config::load(&opts.config) {
+    Ok(conf) => conf,
+    Err(err) => match err {
+      error::Error::NotFound => config::Config::new(),
+      err                    => return Err(err),
+    },
+  };
   match &opts.file {
     Some(path) => unfurl(opts, &conf, fs::File::open(path)?),
     None       => unfurl(opts, &conf, std::io::stdin()),

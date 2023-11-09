@@ -35,7 +35,7 @@ pub fn find(conf: &config::Config, url: &str) -> Result<Option<(Box<dyn Service>
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct GithubConfig {
-  header: String,
+  header: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -67,10 +67,13 @@ impl Github {
   }
 
   fn get(&self, url: &str) -> reqwest::RequestBuilder {
-    self.client.get(url)
+    let mut builder = self.client.get(url)
       .header("Accept", "application/vnd.github+json")
-      .header("User-Agent", &format!("Unfurl/{}", VERSION))
-      .header("Authorization", &self.config.header)
+      .header("User-Agent", &format!("Unfurl/{}", VERSION));
+    if let Some(header) = &self.config.header {
+      builder = builder.header("Authorization", header);
+    }
+    builder
   }
 
   fn request_pr(&self, _conf: &config::Config, _link: &url::Url, mat: route::Match) -> Result<reqwest::RequestBuilder, error::Error> {
