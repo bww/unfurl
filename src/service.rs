@@ -1,5 +1,4 @@
 use std::env;
-use std::path;
 
 use reqwest;
 use serde::{Serialize, Deserialize};
@@ -21,8 +20,8 @@ pub trait Service {
 
 pub fn find(conf: &config::Config, url: &str) -> Result<Option<(Box<dyn Service>, url::Url)>, error::Error> {
   let url = match url::Url::parse(url) {
-    Ok(url)  => url,
-    Err(err) => return Ok(None),
+    Ok(url) => url,
+    Err(_)  => return Ok(None),
   };
   let host = match url.host_str() {
     Some(host) => host,
@@ -74,14 +73,14 @@ impl Github {
       .header("Authorization", &self.config.header)
   }
 
-  fn request_pr(&self, conf: &config::Config, link: &url::Url, mat: route::Match) -> Result<reqwest::RequestBuilder, error::Error> {
+  fn request_pr(&self, _conf: &config::Config, _link: &url::Url, mat: route::Match) -> Result<reqwest::RequestBuilder, error::Error> {
     match mat.get("num") {
       Some(num) => Ok(self.get(&format!("https://api.github.com/repos/treno-io/product/pulls/{}", num))),
       None      => Err(error::Error::NotFound),
     }
   }
 
-  fn format_pr(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
+  fn format_pr(&self, _conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
     let data = match rsp.data() {
       Ok(data) => data,
       Err(err) => return Ok(format!("{} ({})", link, err)),
@@ -93,14 +92,14 @@ impl Github {
     Ok(format!("{} (#{})", rsp.title, rsp.number))
   }
 
-  fn request_issue(&self, conf: &config::Config, link: &url::Url, mat: route::Match) -> Result<reqwest::RequestBuilder, error::Error> {
+  fn request_issue(&self, _conf: &config::Config, _link: &url::Url, mat: route::Match) -> Result<reqwest::RequestBuilder, error::Error> {
     match mat.get("num") {
       Some(num) => Ok(self.get(&format!("https://api.github.com/repos/treno-io/product/issues/{}", num))),
       None      => Err(error::Error::NotFound),
     }
   }
 
-  fn format_issue(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
+  fn format_issue(&self, _conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
     let data = match rsp.data() {
       Ok(data) => data,
       Err(err) => return Ok(format!("{} ({})", link, err)),
@@ -126,9 +125,9 @@ impl Service for Github {
   }
 
   fn format(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
-    if let Some(mat) = self.pattern_pr.match_path(link.path()) {
+    if let Some(_) = self.pattern_pr.match_path(link.path()) {
       self.format_pr(conf, link, rsp)
-    }else if let Some(mat) = self.pattern_issue.match_path(link.path()) {
+    }else if let Some(_) = self.pattern_issue.match_path(link.path()) {
       self.format_issue(conf, link, rsp)
     }else{
       Err(error::Error::NotFound)

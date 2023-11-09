@@ -1,6 +1,5 @@
 use std::io::{Read};
 use std::fs;
-use std::env;
 use std::collections::HashMap;
 
 use clap::Parser;
@@ -41,7 +40,7 @@ fn app(opts: &Options) -> Result<(), error::Error> {
   }
 }
 
-fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<(), error::Error> {
+fn unfurl<R: Read>(_opts: &Options, conf: &config::Config, mut r: R) -> Result<(), error::Error> {
   let mut data = String::new();
   r.read_to_string(&mut data)?;
 
@@ -53,8 +52,8 @@ fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<()
   loop {
     let (tok, rest) = parse::next(text);
     match tok {
-      parse::Token::EOF => break,
-      parse::Token::Text(text) => toks.push(tok.clone()),
+      parse::Token::EOF       => break,
+      parse::Token::Text(_)   => toks.push(tok.clone()),
       parse::Token::URL(text) => match service::find(conf, text)? {
         Some((svc, url)) => {
           urls.push(fetch::Request::new(text, svc.request(conf, &url)?));
@@ -73,9 +72,9 @@ fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<()
 
   for tok in &toks {
     match tok {
-      parse::Token::EOF => break,
+      parse::Token::EOF        => break,
       parse::Token::Text(text) => print!("{}", text),
-      parse::Token::URL(text) => match service::find(conf, text)? {
+      parse::Token::URL(text)  => match service::find(conf, text)? {
         Some((svc, url)) => print!("{}", svc.format(conf, &url, rsps.get(&url.to_string()).expect("No respose for URL"))?),
         None             => print!("{} (INVALID)", text),
       },

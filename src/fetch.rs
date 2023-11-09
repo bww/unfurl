@@ -8,7 +8,7 @@ use once_cell::sync::OnceCell;
 
 use crate::error;
 
-const CONCURRENT_REQUESTS: usize  = 3;
+const CONCURRENT_REQUESTS: usize = 5;
 
 static SERVICE: OnceCell<Service> = OnceCell::new();
 
@@ -50,7 +50,6 @@ impl Response {
 }
 
 pub struct Service {
-  client: reqwest::Client,
   tx: mpsc::Sender<Requests>,
 }
 
@@ -61,33 +60,20 @@ impl Service {
 
   fn new() -> Service {
     let (q_tx, q_rx) = mpsc::channel();
-    let svc = Service{
-      client: reqwest::Client::new(),
-      tx: q_tx,
-    };
-    thread::spawn(|| { Service::run(reqwest::Client::new(), q_rx) });
+    let svc = Service{tx: q_tx};
+    thread::spawn(|| { Service::run(q_rx) });
     svc
-  }
-
-  pub fn fetch_urls(&self, urls: Vec<String>) -> Result<mpsc::Receiver<Vec<Response>>, error::Error> {
-    self.fetch_requests(urls.iter().map(|e| {
-      Request{
-        key: e.to_string(),
-        req: self.client.get(e),
-      }
-    }).collect())
   }
 
   pub fn fetch_requests(&self, reqs: Vec<Request>) -> Result<mpsc::Receiver<Vec<Response>>, error::Error> {
     let (p_tx, p_rx) = mpsc::channel();
     match self.tx.send(Requests{tx: p_tx, reqs: reqs}) {
-      Ok(_)    => Ok(p_rx),
-      Err(err) => Err(error::Error::SendError),
+      Ok(_)  => Ok(p_rx),
+      Err(_) => Err(error::Error::SendError),
     }
   }
 
-  fn run(client: reqwest::Client, rx: mpsc::Receiver<Requests>) {
-    let client = &client;
+  fn run(rx: mpsc::Receiver<Requests>) {
     tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(async {
       loop {
         let x = match rx.recv() {
@@ -97,7 +83,7 @@ impl Service {
             return;
           },
         };
-        let rsps = fetch_n(client, CONCURRENT_REQUESTS, x.reqs).await;
+        let rsps = fetch_n(CONCURRENT_REQUESTS, x.reqs).await;
         if let Err(err) = x.tx.send(rsps) {
           println!("*** Could not send: {}", err);
           return;
@@ -107,10 +93,9 @@ impl Service {
   }
 }
 
-async fn fetch_n(client: &reqwest::Client, n: usize, reqs: Vec<Request>) -> Vec<Response> {
+async fn fetch_n(n: usize, reqs: Vec<Request>) -> Vec<Response> {
   stream::iter(reqs)
     .map(|req| {
-      let client = &client;
       async move {
         Response{
           key: req.key.clone(),

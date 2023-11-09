@@ -7,18 +7,6 @@ pub struct Match {
 }
 
 impl Match {
-  fn new(vars: BTreeMap<String, String>) -> Match {
-    Match{
-      vars: vars,
-    }
-  }
-
-  fn new_empty() -> Match {
-    Match{
-      vars: BTreeMap::new(),
-    }
-  }
-
   pub fn get<'a>(&'a self, name: &str) -> Option<&'a String> {
     self.vars.get(name)
   }
@@ -88,6 +76,20 @@ impl Pattern {
 mod tests {
   use super::*;
   
+  impl Match {
+    fn new(vars: BTreeMap<String, String>) -> Match {
+      Match{
+        vars: vars,
+      }
+    }
+
+    fn new_empty() -> Match {
+      Match{
+        vars: BTreeMap::new(),
+      }
+    }
+  }
+
   #[test]
   fn equality() {
     let a = Pattern::new("a/b");
