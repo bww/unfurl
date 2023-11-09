@@ -85,10 +85,11 @@ impl Github {
   }
 
   fn request_pr(&self, _conf: &config::Config, _link: &url::Url, mat: route::Match) -> Result<reqwest::RequestBuilder, error::Error> {
-    match mat.get("num") {
-      Some(num) => Ok(self.get(&format!("https://api.github.com/repos/treno-io/product/pulls/{}", num))),
-      None      => Err(error::Error::NotFound),
-    }
+    Ok(self.get(&format!("https://api.github.com/repos/{}/{}/pulls/{}",
+      mat.get("org").ok_or(error::Error::NotFound)?,
+      mat.get("repo").ok_or(error::Error::NotFound)?,
+      mat.get("num").ok_or(error::Error::NotFound)?
+    )))
   }
 
   fn format_pr(&self, _conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
@@ -104,10 +105,11 @@ impl Github {
   }
 
   fn request_issue(&self, _conf: &config::Config, _link: &url::Url, mat: route::Match) -> Result<reqwest::RequestBuilder, error::Error> {
-    match mat.get("num") {
-      Some(num) => Ok(self.get(&format!("https://api.github.com/repos/treno-io/product/issues/{}", num))),
-      None      => Err(error::Error::NotFound),
-    }
+    Ok(self.get(&format!("https://api.github.com/repos/{}/{}/issues/{}",
+      mat.get("org").ok_or(error::Error::NotFound)?,
+      mat.get("repo").ok_or(error::Error::NotFound)?,
+      mat.get("num").ok_or(error::Error::NotFound)?
+    )))
   }
 
   fn format_issue(&self, _conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
