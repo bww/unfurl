@@ -9,36 +9,16 @@ use crate::error;
 use crate::config;
 use crate::route;
 use crate::fetch;
+use crate::service;
 
-pub const DOMAIN_GITHUB: &str = "github.com";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub trait Service {
-  fn request(&self, conf: &config::Config, link: &url::Url) -> Result<reqwest::RequestBuilder, error::Error>;
-  fn format(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error>;
-}
-
-pub fn find(conf: &config::Config, url: &str) -> Result<Option<(Box<dyn Service>, url::Url)>, error::Error> {
-  let url = match url::Url::parse(url) {
-    Ok(url) => url,
-    Err(_)  => return Ok(None),
-  };
-  let host = match url.host_str() {
-    Some(host) => host,
-    None       => return Ok(None),
-  };
-  match host.to_lowercase().as_ref() {
-    DOMAIN_GITHUB => Ok(Some((Box::new(Github::new(conf)?), url))),
-    _             => Ok(None)
-  }
-}
-
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct GithubConfig {
+struct Config {
   header: Option<String>,
 }
 
-impl GithubConfig {
+impl Config {
   fn new() -> Self {
     Self{
       header: None,
@@ -47,14 +27,14 @@ impl GithubConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct GithubIssue {
+struct Issue {
   number: usize,
   title: String,
 }
 
 pub struct Github{
   client: reqwest::Client,
-  config: GithubConfig,
+  config: Config,
 
   pattern_pr: route::Pattern,
   pattern_issue: route::Pattern,
@@ -62,9 +42,9 @@ pub struct Github{
 
 impl Github {
   pub fn new(conf: &config::Config) -> Result<Github, error::Error> {
-    let conf = match conf.get(DOMAIN_GITHUB) {
+    let conf = match conf.get(service::DOMAIN_GITHUB) {
       Some(conf) => serde_yaml::from_value(conf.auth.clone())?,
-      None       => GithubConfig::new(),
+      None       => Config::new(),
     };
     Ok(Github{
       client: reqwest::Client::new(),
@@ -97,7 +77,7 @@ impl Github {
       Ok(data) => data,
       Err(err) => return Ok(format!("{} ({})", link, err)),
     };
-    let rsp: GithubIssue = match serde_json::from_slice(data.as_ref()) {
+    let rsp: Issue = match serde_json::from_slice(data.as_ref()) {
       Ok(rsp)  => rsp,
       Err(err) => return Ok(format!("{} ({})", link, err)),
     };
@@ -117,7 +97,7 @@ impl Github {
       Ok(data) => data,
       Err(err) => return Ok(format!("{} ({})", link, err)),
     };
-    let rsp: GithubIssue = match serde_json::from_slice(data.as_ref()) {
+    let rsp: Issue = match serde_json::from_slice(data.as_ref()) {
       Ok(rsp)  => rsp,
       Err(err) => return Ok(format!("{} ({})", link, err)),
     };
@@ -126,7 +106,7 @@ impl Github {
 }
 
 
-impl Service for Github {
+impl service::Service for Github {
   fn request(&self, conf: &config::Config, link: &url::Url) -> Result<reqwest::RequestBuilder, error::Error> {
     if let Some(mat) = self.pattern_pr.match_path(link.path()) {
       self.request_pr(conf, link, mat)
@@ -147,4 +127,5 @@ impl Service for Github {
     }
   }
 }
+
 
