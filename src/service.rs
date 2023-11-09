@@ -16,7 +16,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub trait Service {
   fn request(&self, conf: &config::Config, link: &url::Url) -> Result<reqwest::RequestBuilder, error::Error>;
-  fn format(&self, conf: &config::Config, link: &url::Url, rsp: fetch::Response) -> Result<String, error::Error>;
+  fn format(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error>;
 }
 
 pub fn find(conf: &config::Config, url: &str) -> Result<Option<(Box<dyn Service>, url::Url)>, error::Error> {
@@ -81,7 +81,7 @@ impl Github {
     }
   }
 
-  fn format_pr(&self, conf: &config::Config, link: &url::Url, rsp: fetch::Response) -> Result<String, error::Error> {
+  fn format_pr(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
     let data = match rsp.data() {
       Ok(data) => data,
       Err(err) => return Ok(format!("{} ({})", link, err)),
@@ -100,7 +100,7 @@ impl Github {
     }
   }
 
-  fn format_issue(&self, conf: &config::Config, link: &url::Url, rsp: fetch::Response) -> Result<String, error::Error> {
+  fn format_issue(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
     let data = match rsp.data() {
       Ok(data) => data,
       Err(err) => return Ok(format!("{} ({})", link, err)),
@@ -125,7 +125,7 @@ impl Service for Github {
     }
   }
 
-  fn format(&self, conf: &config::Config, link: &url::Url, rsp: fetch::Response) -> Result<String, error::Error> {
+  fn format(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
     if let Some(mat) = self.pattern_pr.match_path(link.path()) {
       self.format_pr(conf, link, rsp)
     }else if let Some(mat) = self.pattern_issue.match_path(link.path()) {

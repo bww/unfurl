@@ -76,12 +76,19 @@ fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<()
   }
 
   let res = svc.fetch_requests(urls)?.recv()?;
-  let rsp: HashMap<String, fetch::Response> = res.into_iter()
+  let rsps: HashMap<String, fetch::Response> = res.into_iter()
     .map(|e| { (e.key().to_string(), e) })
     .collect();
 
-  println!(">>> >>> >>> {:?}", &rsp);
   for tok in &toks {
+    match tok {
+      parse::Token::EOF => break,
+      parse::Token::Text(text) => print!("{}", text),
+      parse::Token::URL(text) => match service::find(conf, text)? {
+        Some((svc, url)) => print!("{}", svc.format(conf, &url, rsps.get(&url.to_string()).expect("No respose for URL"))?),
+        None             => print!("{} (INVALID)", text),
+      },
+    };
   }
 
   Ok(())
