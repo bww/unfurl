@@ -17,6 +17,7 @@ pub struct Service {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
+  #[serde(default = "BTreeMap::new")]
   services: BTreeMap<String, Service>,
 }
 

@@ -38,6 +38,14 @@ struct GithubConfig {
   header: Option<String>,
 }
 
+impl GithubConfig {
+  fn new() -> Self {
+    Self{
+      header: None,
+    }
+  }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct GithubIssue {
   number: usize,
@@ -55,12 +63,12 @@ pub struct Github{
 impl Github {
   pub fn new(conf: &config::Config) -> Result<Github, error::Error> {
     let conf = match conf.get(DOMAIN_GITHUB) {
-      Some(conf) => conf,
-      None       => return Err(error::Error::NotFound),
+      Some(conf) => serde_yaml::from_value(conf.auth.clone())?,
+      None       => GithubConfig::new(),
     };
     Ok(Github{
       client: reqwest::Client::new(),
-      config: serde_yaml::from_value(conf.auth.clone())?,
+      config: conf,
       pattern_pr: route::Pattern::new("/{org}/{repo}/pull/{num}"),
       pattern_issue: route::Pattern::new("/{org}/{repo}/issues/{num}"),
     })

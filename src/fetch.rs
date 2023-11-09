@@ -101,8 +101,11 @@ async fn fetch_n(n: usize, reqs: Vec<Request>) -> Vec<Response> {
           key: req.key.clone(),
           data: match req.req.send().await {
             Err(err) => Err(err.into()),
-            Ok(rsp)  => match rsp.bytes().await {
-              Ok(data) => Ok(data),
+            Ok(rsp)  => match rsp.error_for_status() {
+              Ok(rsp) => match rsp.bytes().await {
+                Ok(data) => Ok(data),
+                Err(err) => Err(err.into()),
+              },
               Err(err) => Err(err.into()),
             },
           }
