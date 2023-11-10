@@ -1,9 +1,9 @@
 use std::path;
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
 pub struct Match {
-  pub vars: BTreeMap<String, String>,
+  pub vars: HashMap<String, String>,
 }
 
 impl Match {
@@ -24,7 +24,7 @@ impl Pattern {
     let mut lit = self.0.components().into_iter();
     let mut rit = p.as_ref().components().into_iter();
 
-    let mut vars: BTreeMap<String, String> = BTreeMap::new();
+    let mut vars: HashMap<String, String> = HashMap::new();
     loop {
       let lc = match lit.next(){
         Some(lc) => lc,
@@ -77,7 +77,7 @@ mod tests {
   use super::*;
   
   impl Match {
-    fn new(vars: BTreeMap<String, String>) -> Match {
+    fn new(vars: HashMap<String, String>) -> Match {
       Match{
         vars: vars,
       }
@@ -85,7 +85,7 @@ mod tests {
 
     fn new_empty() -> Match {
       Match{
-        vars: BTreeMap::new(),
+        vars: HashMap::new(),
       }
     }
   }
@@ -112,10 +112,10 @@ mod tests {
     let p = Pattern::new("/a/b");
     assert_eq!(Some(Match::new_empty()), p.match_path("/a/b"));
     let p = Pattern::new("a/{b}");
-    assert_eq!(Some(Match::new(BTreeMap::from([("b".to_string(), "Hello".to_string())]))), p.match_path("a/Hello"));
+    assert_eq!(Some(Match::new(HashMap::from([("b".to_string(), "Hello".to_string())]))), p.match_path("a/Hello"));
 
     let p = Pattern::new("/{a}/{b}");
-    assert_eq!(Some(Match::new(BTreeMap::from([
+    assert_eq!(Some(Match::new(HashMap::from([
       ("a".to_string(), "Anything".to_string()),
       ("b".to_string(), "Hello".to_string()),
     ]))), p.match_path("/Anything/Hello"));

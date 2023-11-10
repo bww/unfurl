@@ -3,8 +3,8 @@ use std::sync::mpsc;
 
 use bytes::Bytes;
 use futures::{stream, StreamExt};
-use reqwest;
 use once_cell::sync::OnceCell;
+use reqwest;
 
 use crate::error;
 

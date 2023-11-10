@@ -28,7 +28,9 @@ pub fn next<'a>(text: &'a str) -> (Token<'a>, &'a str) {
   if x > 0 {
     return (Token::Text(&text[..x]), &text[x..]);
   }
-  match text.find(char::is_whitespace) {
+  match text.find(|c| {
+    char::is_whitespace(c) || c == ',' || c == ';' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}'
+  }) {
     Some(y) => (Token::URL(&text[..y]), &text[y..]),
     None    => (Token::URL(text), ""),
   }
@@ -45,10 +47,10 @@ mod tests {
     assert_eq!(Token::Text("Hello, there: "), tok);
     assert_eq!("https://google.com, and then trailing.", text);
     let (tok, text) = next(text);
-    assert_eq!(Token::URL("https://google.com,"), tok);
-    assert_eq!(" and then trailing.", text);
+    assert_eq!(Token::URL("https://google.com"), tok);
+    assert_eq!(", and then trailing.", text);
     let (tok, text) = next(text);
-    assert_eq!(Token::Text(" and then trailing."), tok);
+    assert_eq!(Token::Text(", and then trailing."), tok);
     assert_eq!("", text);
     let (tok, text) = next(text);
     assert_eq!(Token::EOF, tok);
