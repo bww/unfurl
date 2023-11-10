@@ -34,30 +34,42 @@ pub fn next<'a>(text: &'a str) -> (Token<'a>, &'a str) {
   }
 }
 
-fn is_maybe_url(c: char) -> bool {
+struct Pos {
+  index: usize,
+  value: char
+}
+
+fn is_url_end(c: char) -> bool {
+  return c == ',' || c == ';' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' 
+}
+
+fn is_url_end_maybe(c: char) -> bool {
   return c == '.' || c == ':'
 }
 
 fn next_url_end(text: &str) -> Option<usize> {
   let text = text.chars();
-  let mut p: Option<char> = None;
+  let mut p: Option<Pos> = None;
   for (i, c) in text.enumerate() {
     if char::is_whitespace(c) {
-      match p {
-        Some(p) => if is_maybe_url(p) {
-          return Some(i - 1); // move back one
-        } else {
-          return Some(i);
-        },
-        None => return Some(i),
-      }
+      break;
     }
-    if c == ',' || c == ';' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' {
+    if is_url_end(c) {
       return Some(i);
     }
-    p = Some(c);
+    p = Some(Pos{
+      index: i,
+      value: c,
+    });
   }
-  None
+  match p {
+    Some(p) => if is_url_end_maybe(p.value) {
+      Some(p.index) // index from previous
+    } else {
+      Some(p.index + 1) // move forward one, current index
+    },
+    None => None,
+  }
 }
 
 #[cfg(test)]
@@ -85,6 +97,28 @@ mod tests {
     let (tok, text) = next(text);
     assert_eq!(Token::EOF, tok);
     assert_eq!("", text);
+  }
+
+  #[test]
+  fn parse_text_boundaries() {
+    let (tok, text) = next("https://google.com,");
+    assert_eq!(Token::URL("https://google.com"), tok);
+    assert_eq!(",", text);
+    let (tok, text) = next("https://google.com, ");
+    assert_eq!(Token::URL("https://google.com"), tok);
+    assert_eq!(", ", text);
+    let (tok, text) = next("https://google.com.");
+    assert_eq!(Token::URL("https://google.com"), tok);
+    assert_eq!(".", text);
+    let (tok, text) = next("https://google.com. ");
+    assert_eq!(Token::URL("https://google.com"), tok);
+    assert_eq!(". ", text);
+    let (tok, text) = next("https://google.com:");
+    assert_eq!(Token::URL("https://google.com"), tok);
+    assert_eq!(":", text);
+    let (tok, text) = next("https://google.com: ");
+    assert_eq!(Token::URL("https://google.com"), tok);
+    assert_eq!(": ", text);
   }
 
 }
