@@ -5,7 +5,6 @@ use reqwest;
 use serde::{Serialize, Deserialize};
 use serde_yaml;
 use serde_json;
-use tinytemplate;
 
 use crate::error;
 use crate::config;
@@ -80,18 +79,26 @@ impl Github {
   }
 
   fn format_pr(&self, _conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
+    let name = "pr";
     let data = match rsp.data() {
       Ok(data) => data,
-      Err(err) => return Ok(format!("{} ({})", link, err)),
+      Err(err) => return Ok(format!("{} [{}]", link, err)),
     };
-    let rsp: Issue = match serde_json::from_slice(data.as_ref()) {
-      Ok(rsp)  => rsp,
-      Err(err) => return Ok(format!("{} ({})", link, err)),
-    };
-    let name = "pr";
     match config::parse_format(&self.config.format, name)? {
-      Some(f) => Ok(f.render(name, &rsp)?),
-      None    => Ok(format!("{} (#{})", rsp.title, rsp.number)),
+      Some(f) => {
+        let rsp: serde_json::Value = match serde_json::from_slice(data.as_ref()) {
+          Ok(rsp)  => rsp,
+          Err(err) => return Ok(format!("{} [{}]", link, err)),
+        };
+        Ok(f.render(name, &rsp)?)
+      },
+      None => {
+        let rsp: Issue = match serde_json::from_slice(data.as_ref()) {
+          Ok(rsp)  => rsp,
+          Err(err) => return Ok(format!("{} [{}]", link, err)),
+        };
+        Ok(format!("{} (#{})", rsp.title, rsp.number))
+      },
     }
   }
 
@@ -104,15 +111,27 @@ impl Github {
   }
 
   fn format_issue(&self, _conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
+    let name = "issue";
     let data = match rsp.data() {
       Ok(data) => data,
-      Err(err) => return Ok(format!("{} ({})", link, err)),
+      Err(err) => return Ok(format!("{} [{}]", link, err)),
     };
-    let rsp: Issue = match serde_json::from_slice(data.as_ref()) {
-      Ok(rsp)  => rsp,
-      Err(err) => return Ok(format!("{} ({})", link, err)),
-    };
-    Ok(format!("{} (#{})", rsp.title, rsp.number))
+    match config::parse_format(&self.config.format, name)? {
+      Some(f) => {
+        let rsp: serde_json::Value = match serde_json::from_slice(data.as_ref()) {
+          Ok(rsp)  => rsp,
+          Err(err) => return Ok(format!("{} [{}]", link, err)),
+        };
+        Ok(f.render(name, &rsp)?)
+      },
+      None => {
+        let rsp: Issue = match serde_json::from_slice(data.as_ref()) {
+          Ok(rsp)  => rsp,
+          Err(err) => return Ok(format!("{} [{}]", link, err)),
+        };
+        Ok(format!("{} (#{})", rsp.title, rsp.number))
+      },
+    }
   }
 }
 

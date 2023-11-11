@@ -82,11 +82,11 @@ impl Jira {
   fn format_issue(&self, _conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
     let data = match rsp.data() {
       Ok(data) => data,
-      Err(err) => return Ok(format!("{} ({})", link, err)),
+      Err(err) => return Ok(format!("{} [{}]", link, err)),
     };
     let rsp: Issue = match serde_json::from_slice(data.as_ref()) {
       Ok(rsp)  => rsp,
-      Err(err) => return Ok(format!("{} ({})", link, err)),
+      Err(err) => return Ok(format!("{} [{}]", link, err)),
     };
     Ok(format!("{} (#{})", rsp.fields.summary, rsp.key))
   }
