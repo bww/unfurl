@@ -24,6 +24,13 @@ impl Config {
       header: None,
     }
   }
+
+  fn from(conf: Option<&serde_yaml::Value>) -> Result<Config, error::Error> {
+    Ok(match conf {
+      Some(conf) => serde_yaml::from_value(conf.clone())?,
+      None       => Config::new(),
+    })
+  }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,13 +54,9 @@ pub struct Jira{
 
 impl Jira {
   pub fn new_with_host(conf: &config::Config, host: &str) -> Result<Jira, error::Error> {
-    let conf = match conf.get(host) {
-      Some(conf) => serde_yaml::from_value(conf.auth.clone())?,
-      None       => Config::new(),
-    };
     Ok(Jira{
       client: reqwest::Client::new(),
-      config: conf,
+      config: Config::from(conf.get(service::DOMAIN_JIRA))?,
       host: host.to_string(),
       pattern_issue: route::Pattern::new("/browse/{handle}"),
     })

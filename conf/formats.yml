@@ -1,0 +1,5 @@
+services:
+  github.com:
+    format:
+      pr: "{title} // {number}"
+

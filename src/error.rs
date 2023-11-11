@@ -13,6 +13,7 @@ pub enum Error {
   YamlParseError(serde_yaml::Error),
   ClientError(reqwest::Error),
   RecvError(mpsc::RecvError),
+  TemplateError(tinytemplate::error::Error),
   AddrError,
   SendError,
   NotFound,
@@ -55,6 +56,12 @@ impl From<mpsc::RecvError> for Error {
   }
 }
 
+impl From<tinytemplate::error::Error> for Error {
+  fn from(err: tinytemplate::error::Error) -> Self {
+    Self::TemplateError(err)
+  }
+}
+
 impl From<addr::error::Error<'_>> for Error {
   fn from(_: addr::error::Error<'_>) -> Self {
     Self::AddrError
@@ -77,6 +84,7 @@ impl fmt::Display for Error {
       Self::YamlParseError(err) => err.fmt(f),
       Self::ClientError(err) => err.fmt(f),
       Self::RecvError(err) => err.fmt(f),
+      Self::TemplateError(err) => err.fmt(f),
       Self::AddrError => write!(f, "Address error"),
       Self::SendError => write!(f, "Send error"),
       Self::NotFound => write!(f, "Not found"),
