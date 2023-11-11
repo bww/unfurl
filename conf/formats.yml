@@ -1,0 +1,6 @@
+services:
+  github.com:
+    format:
+      pr: "[{number}] {title} ({url})"
+      issue: "[{number}] {title} ({url})"
+
