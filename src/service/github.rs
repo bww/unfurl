@@ -1,9 +1,7 @@
 use std::env;
-use std::collections::HashMap;
 
 use reqwest;
 use serde::{Serialize, Deserialize};
-use serde_yaml;
 use serde_json;
 
 use crate::error;
@@ -14,28 +12,6 @@ use crate::service;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct Config {
-  header: Option<String>,
-  format: Option<HashMap<String, String>>,
-}
-
-impl Config {
-  fn new() -> Self {
-    Self{
-      header: None,
-      format: None,
-    }
-  }
-
-  fn from(conf: Option<&serde_yaml::Value>) -> Result<Config, error::Error> {
-    Ok(match conf {
-      Some(conf) => serde_yaml::from_value(conf.clone())?,
-      None       => Config::new(),
-    })
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 struct Issue {
   number: usize,
@@ -44,7 +20,7 @@ struct Issue {
 
 pub struct Github{
   client: reqwest::Client,
-  config: Config,
+  config: config::Service,
 
   pattern_pr: route::Pattern,
   pattern_issue: route::Pattern,
@@ -54,20 +30,17 @@ impl Github {
   pub fn new(conf: &config::Config) -> Result<Github, error::Error> {
     Ok(Github{
       client: reqwest::Client::new(),
-      config: Config::from(conf.get(service::DOMAIN_GITHUB))?,
+      config: config::Service::from(conf.get(service::DOMAIN_GITHUB))?,
       pattern_pr: route::Pattern::new("/{org}/{repo}/pull/{num}"),
       pattern_issue: route::Pattern::new("/{org}/{repo}/issues/{num}"),
     })
   }
 
   fn get(&self, url: &str) -> reqwest::RequestBuilder {
-    let mut builder = self.client.get(url)
+    let builder = self.client.get(url)
       .header("Accept", "application/vnd.github+json")
       .header("User-Agent", &format!("Unfurl/{}", VERSION));
-    if let Some(header) = &self.config.header {
-      builder = builder.header("Authorization", header);
-    }
-    builder
+    self.config.authenticate(builder)
   }
 
   fn request_pr(&self, _conf: &config::Config, _link: &url::Url, mat: route::Match) -> Result<reqwest::RequestBuilder, error::Error> {

@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 use serde_yaml;
 use tinytemplate;
+use reqwest;
 
 use crate::error;
 
@@ -47,6 +48,45 @@ pub fn load_data<R: Read>(mut r: R) -> Result<Config, error::Error> {
   r.read_to_string(&mut data)?;
   let conf: Config = serde_yaml::from_str(&data)?;
   Ok(conf)
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Authn {
+  pub header: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Service {
+  pub auth: Option<Authn>,
+  pub format: Option<HashMap<String, String>>,
+}
+
+impl Service {
+  pub fn new() -> Self {
+    Self{
+      auth: None,
+      format: None,
+    }
+  }
+
+  pub fn from(conf: Option<&serde_yaml::Value>) -> Result<Self, error::Error> {
+    Ok(match conf {
+      Some(conf) => serde_yaml::from_value(conf.clone())?,
+      None       => Self::new(),
+    })
+  }
+
+  pub fn authenticate(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    let auth = match &self.auth {
+      Some(auth) => auth,
+      None       => return req,
+    };
+    let header = match &auth.header {
+      Some(header) => header,
+      None         => return req,
+    };
+    req.header("Authorization", header)
+  }
 }
 
 pub fn parse_format<'a>(conf: &'a Option<HashMap<String, String>>, name: &'a str) -> Result<Option<tinytemplate::TinyTemplate<'a>>, error::Error> {
