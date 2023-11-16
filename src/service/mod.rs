@@ -58,6 +58,20 @@ impl Endpoint {
     f.add_template(&self.name, &self.url)?;
     Ok(f.render(&self.name, &mat.vars)?)
   }
+
+  fn format_response(&self, rsp: &fetch::Response) -> Result<String, error::Error> {
+    let data = match rsp.data() {
+      Ok(data) => data,
+      Err(err) => return Err(error::Error::Invalid),
+    };
+    let rsp: serde_json::Value = match serde_json::from_slice(data.as_ref()) {
+      Ok(rsp)  => rsp,
+      Err(err) => return Err(error::Error::Invalid),
+    };
+    let mut f = tinytemplate::TinyTemplate::new();
+    f.add_template(&self.name, &self.format)?;
+    Ok(f.render(&self.name, &rsp)?)
+  }
 }
 
 struct Domain {
@@ -88,13 +102,13 @@ impl Generic {
               name: "pr".to_string(),
               route: route::Pattern::new("/{org}/{repo}/pull/{num}"),
               url: "https://api.github.com/repos/{org}/{repo}/pulls/{num}".to_string(),
-              format: "{title} (#{number})".to_string(),
+              format: "{title} (PR #{number})".to_string(),
             },
             Endpoint{
               name: "issue".to_string(),
               route: route::Pattern::new("/{org}/{repo}/issues/{num}"),
               url: "https://api.github.com/repos/{org}/{repo}/issues/{num}".to_string(),
-              format: "{title} (#{number})".to_string(),
+              format: "{title} (Issue #{number})".to_string(),
             },
           ],
         }),
@@ -142,7 +156,7 @@ impl Generic {
 }
 
 impl Service for Generic {
-  fn request(&self, conf: &config::Config, link: &url::Url) -> Result<reqwest::RequestBuilder, error::Error> {
+  fn request(&self, _conf: &config::Config, link: &url::Url) -> Result<reqwest::RequestBuilder, error::Error> {
     match self.find_route(link) {
       Some((domain, ept, mat)) => Ok(self.get(domain, &ept.url_with_data(&mat)?)),
       None                     => Err(error::Error::NotFound),
@@ -150,7 +164,10 @@ impl Service for Generic {
   }
 
   fn format(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
-    Err(error::Error::NotFound)
+    match self.find_route(link) {
+      Some((domain, ept, mat)) => Ok(ept.format_response(rsp)?),
+      None                     => Err(error::Error::NotFound),
+    }
   }
 }
 

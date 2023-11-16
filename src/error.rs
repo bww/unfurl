@@ -11,12 +11,14 @@ pub enum Error {
   FromUtf8Error(string::FromUtf8Error),
   UrlParseError(url::ParseError),
   YamlParseError(serde_yaml::Error),
+  JsonParseError(serde_json::Error),
   ClientError(reqwest::Error),
   RecvError(mpsc::RecvError),
   TemplateError(tinytemplate::error::Error),
   AddrError,
   SendError,
   NotFound,
+  Invalid,
   UnboundVariable(String),
 }
 
@@ -41,6 +43,12 @@ impl From<url::ParseError> for Error {
 impl From<serde_yaml::Error> for Error {
   fn from(err: serde_yaml::Error) -> Self {
     Self::YamlParseError(err)
+  }
+}
+
+impl From<serde_json::Error> for Error {
+  fn from(err: serde_json::Error) -> Self {
+    Self::JsonParseError(err)
   }
 }
 
@@ -82,12 +90,14 @@ impl fmt::Display for Error {
       Self::FromUtf8Error(err) => err.fmt(f),
       Self::UrlParseError(err) => err.fmt(f),
       Self::YamlParseError(err) => err.fmt(f),
+      Self::JsonParseError(err) => err.fmt(f),
       Self::ClientError(err) => err.fmt(f),
       Self::RecvError(err) => err.fmt(f),
       Self::TemplateError(err) => err.fmt(f),
       Self::AddrError => write!(f, "Address error"),
       Self::SendError => write!(f, "Send error"),
       Self::NotFound => write!(f, "Not found"),
+      Self::Invalid => write!(f, "Invalid"),
       Self::UnboundVariable(name) => write!(f, "Unbound variable: {}", name),
     }
   }

@@ -52,7 +52,7 @@ fn unfurl<R: Read>(_opts: &Options, conf: &config::Config, mut r: R) -> Result<(
   let mut data = String::new();
   r.read_to_string(&mut data)?;
 
-  let svc = fetch::Service::instance();
+  let ftc = fetch::Service::instance();
   let bke = service::Generic::new(conf)?;
 
   let mut text: &str = &data;
@@ -74,24 +74,10 @@ fn unfurl<R: Read>(_opts: &Options, conf: &config::Config, mut r: R) -> Result<(
         Err(_) => toks.push(parse::Token::Text(text)), // convert to text
       },
     };
-    // match tok {
-    //   parse::Token::EOF       => break,
-    //   parse::Token::Text(_)   => toks.push(tok.clone()),
-    //   parse::Token::URL(text) => match service::find(conf, text)? {
-    //     Some((svc, url)) => match svc.request(conf, &url) {
-    //       Ok(req) => {
-    //         urls.push(fetch::Request::new(text, req));
-    //         toks.push(tok.clone());
-    //       },
-    //       Err(_) => toks.push(parse::Token::Text(text)), // convert to text
-    //     },
-    //     None => toks.push(parse::Token::Text(text)), // convert to text
-    //   },
-    // };
     text = rest;
   }
 
-  let res = svc.fetch_requests(urls)?.recv()?;
+  let res = ftc.fetch_requests(urls)?.recv()?;
   let rsps: HashMap<String, fetch::Response> = res.into_iter()
     .map(|e| { (e.key().to_string(), e) })
     .collect();
@@ -100,9 +86,10 @@ fn unfurl<R: Read>(_opts: &Options, conf: &config::Config, mut r: R) -> Result<(
     match tok {
       parse::Token::EOF        => break,
       parse::Token::Text(text) => print!("{}", text),
-      parse::Token::URL(text)  => match service::find(conf, text)? {
-        Some((svc, url)) => print!("{}", svc.format(conf, &url, rsps.get(&url.to_string()).expect("No respose for URL"))?),
-        None             => print!("{} (INVALID)", text),
+      parse::Token::URL(text)  => {
+        let url = url::Url::parse(text)?;
+        let rsp = rsps.get(&url.to_string()).expect("No respose for URL");
+        print!("{}", bke.format(conf, &url, &rsp)?);
       },
     };
   }
