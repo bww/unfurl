@@ -11,6 +11,8 @@ mod route;
 mod fetch;
 mod parse;
 
+use crate::service::Service;
+
 #[derive(Parser, Debug, Clone)]
 #[clap(author, version, about, long_about = None)]
 pub struct Options {
@@ -51,6 +53,7 @@ fn unfurl<R: Read>(_opts: &Options, conf: &config::Config, mut r: R) -> Result<(
   r.read_to_string(&mut data)?;
 
   let svc = fetch::Service::instance();
+  let bke = service::Generic::new();
 
   let mut text: &str = &data;
   let mut toks: Vec<parse::Token> = Vec::new();
@@ -60,17 +63,31 @@ fn unfurl<R: Read>(_opts: &Options, conf: &config::Config, mut r: R) -> Result<(
     match tok {
       parse::Token::EOF       => break,
       parse::Token::Text(_)   => toks.push(tok.clone()),
-      parse::Token::URL(text) => match service::find(conf, text)? {
-        Some((svc, url)) => match svc.request(conf, &url) {
+      parse::Token::URL(text) => match url::Url::parse(text) {
+        Ok(url) => match bke.request(conf, &url) {
           Ok(req) => {
             urls.push(fetch::Request::new(text, req));
             toks.push(tok.clone());
           },
           Err(_) => toks.push(parse::Token::Text(text)), // convert to text
         },
-        None => toks.push(parse::Token::Text(text)), // convert to text
+        Err(_) => toks.push(parse::Token::Text(text)), // convert to text
       },
     };
+    // match tok {
+    //   parse::Token::EOF       => break,
+    //   parse::Token::Text(_)   => toks.push(tok.clone()),
+    //   parse::Token::URL(text) => match service::find(conf, text)? {
+    //     Some((svc, url)) => match svc.request(conf, &url) {
+    //       Ok(req) => {
+    //         urls.push(fetch::Request::new(text, req));
+    //         toks.push(tok.clone());
+    //       },
+    //       Err(_) => toks.push(parse::Token::Text(text)), // convert to text
+    //     },
+    //     None => toks.push(parse::Token::Text(text)), // convert to text
+    //   },
+    // };
     text = rest;
   }
 
