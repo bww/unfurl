@@ -60,35 +60,49 @@ impl Endpoint {
   }
 }
 
+struct Domain {
+  config: config::Service,
+  routes: Vec<Endpoint>,
+}
+
+impl Domain {
+  fn authenticate(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    self.config.authenticate(req)
+  }
+}
+
 pub struct Generic {
   client: reqwest::Client,
-  routes: HashMap<String, Vec<Endpoint>>,
+  routes: HashMap<String, Domain>,
 }
 
 impl Generic {
-  pub fn new() -> Self {
-    Self{
+  pub fn new(conf: &config::Config) -> Result<Self, error::Error> {
+    Ok(Self{
       client: reqwest::Client::new(),
       routes: HashMap::from([
-        ("github.com".to_string(), vec![
-          Endpoint{
-            name: "pr".to_string(),
-            route: route::Pattern::new("/{org}/{repo}/pull/{num}"),
-            url: "https://api.github.com/repos/{org}/{repo}/pulls/{num}".to_string(),
-            format: "{title} (#{number})".to_string(),
-          },
-          Endpoint{
-            name: "issue".to_string(),
-            route: route::Pattern::new("/{org}/{repo}/issues/{num}"),
-            url: "https://api.github.com/repos/{org}/{repo}/issues/{num}".to_string(),
-            format: "{title} (#{number})".to_string(),
-          },
-        ]),
+        (DOMAIN_GITHUB.to_string(), Domain{
+          config: config::Service::from(conf.get(DOMAIN_GITHUB))?,
+          routes: vec![
+            Endpoint{
+              name: "pr".to_string(),
+              route: route::Pattern::new("/{org}/{repo}/pull/{num}"),
+              url: "https://api.github.com/repos/{org}/{repo}/pulls/{num}".to_string(),
+              format: "{title} (#{number})".to_string(),
+            },
+            Endpoint{
+              name: "issue".to_string(),
+              route: route::Pattern::new("/{org}/{repo}/issues/{num}"),
+              url: "https://api.github.com/repos/{org}/{repo}/issues/{num}".to_string(),
+              format: "{title} (#{number})".to_string(),
+            },
+          ],
+        }),
       ]),
-    }
+    })
   }
 
-  fn find_host<'a>(&'a self, url: &url::Url) -> Option<&'a Vec<Endpoint>> {
+  fn find_host<'a>(&'a self, url: &url::Url) -> Option<&'a Domain> {
     let host = match url.host_str() {
       Some(host) => host,
       None       => return None,
@@ -106,33 +120,32 @@ impl Generic {
     self.routes.get(root)
   }
 
-  fn find_route<'a>(&'a self, url: &url::Url) -> Option<(&'a Endpoint, route::Match)> {
-    let opts = match self.find_host(url) {
-      Some(opts) => opts,
-      None       => return None,
+  fn find_route<'a>(&'a self, url: &url::Url) -> Option<(&'a Domain, &'a Endpoint, route::Match)> {
+    let domain = match self.find_host(url) {
+      Some(domain) => domain,
+      None         => return None,
     };
-    for opt in opts {
+    for opt in &domain.routes {
       if let Some(mat) = opt.route.match_path(url.path()) {
-        return Some((opt, mat));
+        return Some((domain, opt, mat));
       }
     }
     None
   }
 
-  fn get(&self, url: &str) -> reqwest::RequestBuilder {
+  fn get(&self, domain: &Domain, url: &str) -> reqwest::RequestBuilder {
     let builder = self.client.get(url)
       .header("Accept", "application/vnd.github+json")
       .header("User-Agent", &format!("Unfurl/{}", VERSION));
-    //self.config.authenticate(builder)
-    builder
+    domain.authenticate(builder)
   }
 }
 
 impl Service for Generic {
   fn request(&self, conf: &config::Config, link: &url::Url) -> Result<reqwest::RequestBuilder, error::Error> {
     match self.find_route(link) {
-      Some((ept, mat)) => Ok(self.get(&ept.url_with_data(&mat)?)),
-      None             => Err(error::Error::NotFound),
+      Some((domain, ept, mat)) => Ok(self.get(domain, &ept.url_with_data(&mat)?)),
+      None                     => Err(error::Error::NotFound),
     }
   }
 

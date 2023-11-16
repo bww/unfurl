@@ -53,7 +53,7 @@ fn unfurl<R: Read>(_opts: &Options, conf: &config::Config, mut r: R) -> Result<(
   r.read_to_string(&mut data)?;
 
   let svc = fetch::Service::instance();
-  let bke = service::Generic::new();
+  let bke = service::Generic::new(conf)?;
 
   let mut text: &str = &data;
   let mut toks: Vec<parse::Token> = Vec::new();
