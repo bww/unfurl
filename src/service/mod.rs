@@ -27,7 +27,7 @@ struct Endpoint {
 
 impl Endpoint {
   fn url(&self, link: &url::Url, mat: &route::Match) -> Result<String, error::Error> {
-    let cxt = match link.host_str() {
+    let cxt = match link.host() {
       Some(host) => mat.vars_with(HashMap::from([("domain".to_string(), host.to_string())])),
       None       => mat.vars.clone(),
     };
@@ -39,11 +39,11 @@ impl Endpoint {
   fn format_response(&self, rsp: &fetch::Response) -> Result<String, error::Error> {
     let data = match rsp.data() {
       Ok(data) => data,
-      Err(_)   => return Err(error::Error::Invalid),
+      Err(err) => return Err(error::Error::Invalid(format!("Could not read data: {}", err))),
     };
     let rsp: serde_json::Value = match serde_json::from_slice(data.as_ref()) {
-      Ok(rsp) => rsp,
-      Err(_)  => return Err(error::Error::Invalid),
+      Ok(rsp)  => rsp,
+      Err(err) => return Err(error::Error::Invalid(format!("Could not parse data: {}", err))),
     };
     let mut f = tinytemplate::TinyTemplate::new();
     f.add_template(&self.name, &self.format)?;

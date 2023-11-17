@@ -15,10 +15,10 @@ pub enum Error {
   ClientError(reqwest::Error),
   RecvError(mpsc::RecvError),
   TemplateError(tinytemplate::error::Error),
+  Invalid(String),
   AddrError,
   SendError,
   NotFound,
-  Invalid,
 }
 
 impl From<str::Utf8Error> for Error {
@@ -93,10 +93,10 @@ impl fmt::Display for Error {
       Self::ClientError(err) => err.fmt(f),
       Self::RecvError(err) => err.fmt(f),
       Self::TemplateError(err) => err.fmt(f),
+      Self::Invalid(msg) => write!(f, "{}", msg),
       Self::AddrError => write!(f, "Address error"),
       Self::SendError => write!(f, "Send error"),
       Self::NotFound => write!(f, "Not found"),
-      Self::Invalid => write!(f, "Invalid"),
     }
   }
 }
