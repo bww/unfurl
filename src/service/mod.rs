@@ -26,10 +26,14 @@ struct Endpoint {
 }
 
 impl Endpoint {
-  fn url(&self, mat: &route::Match) -> Result<String, error::Error> {
+  fn url(&self, link: &url::Url, mat: &route::Match) -> Result<String, error::Error> {
+    let cxt = match link.host_str() {
+      Some(host) => mat.vars_with(HashMap::from([("domain".to_string(), host.to_string())])),
+      None       => mat.vars.clone(),
+    };
     let mut f = tinytemplate::TinyTemplate::new();
     f.add_template(&self.name, &self.url)?;
-    Ok(f.render(&self.name, &mat.vars)?)
+    Ok(f.render(&self.name, &cxt)?)
   }
 
   fn format_response(&self, rsp: &fetch::Response) -> Result<String, error::Error> {
@@ -61,14 +65,14 @@ impl Domain {
 
 pub struct Generic {
   client: reqwest::Client,
-  routes: HashMap<String, Domain>,
+  domains: HashMap<String, Domain>,
 }
 
 impl Generic {
   pub fn new(conf: &config::Config) -> Result<Self, error::Error> {
     Ok(Self{
       client: reqwest::Client::new(),
-      routes: HashMap::from([
+      domains: HashMap::from([
         (DOMAIN_GITHUB.to_string(), Domain{
           config: config::Service::from(conf.get(DOMAIN_GITHUB))?,
           headers: vec![
@@ -112,7 +116,7 @@ impl Generic {
       Some(host) => host,
       None       => return None,
     };
-    if let Some(endpoint) = self.routes.get(host) {
+    if let Some(endpoint) = self.domains.get(host) {
       return Some(endpoint);
     }
     let root = match addr::parse_domain_name(host) {
@@ -122,7 +126,7 @@ impl Generic {
       },
       Err(_) => return None,
     };
-    self.routes.get(root)
+    self.domains.get(root)
   }
 
   fn find_route<'a>(&'a self, url: &url::Url) -> Option<(&'a Domain, &'a Endpoint, route::Match)> {
@@ -151,7 +155,7 @@ impl Generic {
 impl Service for Generic {
   fn request(&self, _conf: &config::Config, link: &url::Url) -> Result<reqwest::RequestBuilder, error::Error> {
     match self.find_route(link) {
-      Some((domain, ept, mat)) => Ok(self.get(domain, &ept.url(&mat)?)),
+      Some((domain, ept, mat)) => Ok(self.get(domain, &ept.url(link, &mat)?)),
       None                     => Err(error::Error::NotFound),
     }
   }

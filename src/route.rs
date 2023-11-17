@@ -10,6 +10,12 @@ impl Match {
   pub fn _get<'a>(&'a self, name: &str) -> Option<&'a String> {
     self.vars.get(name)
   }
+
+  pub fn vars_with(&self, more: HashMap<String, String>) -> HashMap<String, String> {
+    let mut cmb = self.vars.clone();
+    cmb.extend(more);
+    cmb
+  }
 }
 
 #[derive(Debug, PartialEq)]
