@@ -53,7 +53,7 @@ fn unfurl<R: Read>(_opts: &Options, conf: &config::Config, mut r: R) -> Result<(
   r.read_to_string(&mut data)?;
 
   let ftc = fetch::Service::instance();
-  let bke = service::Generic::new(conf)?;
+  let svc = service::Generic::new(conf)?;
 
   let mut text: &str = &data;
   let mut toks: Vec<parse::Token> = Vec::new();
@@ -64,7 +64,7 @@ fn unfurl<R: Read>(_opts: &Options, conf: &config::Config, mut r: R) -> Result<(
       parse::Token::EOF       => break,
       parse::Token::Text(_)   => toks.push(tok.clone()),
       parse::Token::URL(text) => match url::Url::parse(text) {
-        Ok(url) => match bke.request(conf, &url) {
+        Ok(url) => match svc.request(conf, &url) {
           Ok(req) => {
             urls.push(fetch::Request::new(text, req));
             toks.push(tok.clone());
@@ -89,7 +89,7 @@ fn unfurl<R: Read>(_opts: &Options, conf: &config::Config, mut r: R) -> Result<(
       parse::Token::URL(text)  => {
         let url = url::Url::parse(text)?;
         let rsp = rsps.get(&url.to_string()).expect("No respose for URL");
-        print!("{}", bke.format(conf, &url, &rsp)?);
+        print!("{}", svc.format(conf, &url, &rsp)?);
       },
     };
   }

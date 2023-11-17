@@ -19,7 +19,6 @@ pub enum Error {
   SendError,
   NotFound,
   Invalid,
-  UnboundVariable(String),
 }
 
 impl From<str::Utf8Error> for Error {
@@ -98,7 +97,6 @@ impl fmt::Display for Error {
       Self::SendError => write!(f, "Send error"),
       Self::NotFound => write!(f, "Not found"),
       Self::Invalid => write!(f, "Invalid"),
-      Self::UnboundVariable(name) => write!(f, "Unbound variable: {}", name),
     }
   }
 }

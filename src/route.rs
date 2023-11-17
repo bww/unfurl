@@ -7,7 +7,7 @@ pub struct Match {
 }
 
 impl Match {
-  pub fn get<'a>(&'a self, name: &str) -> Option<&'a String> {
+  pub fn _get<'a>(&'a self, name: &str) -> Option<&'a String> {
     self.vars.get(name)
   }
 }

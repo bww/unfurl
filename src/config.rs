@@ -6,7 +6,6 @@ use std::collections::HashMap;
 
 use serde::{Serialize, Deserialize};
 use serde_yaml;
-use tinytemplate;
 use reqwest;
 
 use crate::error;
@@ -88,19 +87,4 @@ impl Service {
     req.header("Authorization", header)
   }
 }
-
-pub fn parse_format<'a>(conf: &'a Option<HashMap<String, String>>, name: &'a str) -> Result<Option<tinytemplate::TinyTemplate<'a>>, error::Error> {
-  let conf = match conf {
-    Some(conf) => conf,
-    None       => return Ok(None),
-  };
-  let tmpl = match conf.get(name) {
-    Some(tmpl) => tmpl,
-    None       => return Ok(None),
-  };
-  let mut tt = tinytemplate::TinyTemplate::new();
-  tt.add_template(name, tmpl)?;
-  Ok(Some(tt))
-}
-
 

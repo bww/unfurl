@@ -8,9 +8,6 @@ use crate::config;
 use crate::fetch;
 use crate::route;
 
-mod github;
-mod jira;
-
 pub const DOMAIN_GITHUB: &str = "github.com";
 pub const DOMAIN_JIRA: &str   = "atlassian.net";
 
@@ -21,26 +18,6 @@ pub trait Service {
   fn format(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error>;
 }
 
-pub fn find(conf: &config::Config, url: &str) -> Result<Option<(Box<dyn Service>, url::Url)>, error::Error> {
-  let url = match url::Url::parse(url) {
-    Ok(url) => url,
-    Err(_)  => return Ok(None),
-  };
-  let host = match url.host_str() {
-    Some(host) => host,
-    None       => return Ok(None),
-  };
-  let root = match addr::parse_domain_name(host)?.root() {
-    Some(root) => root,
-    None       => host, // weird; just use the input host
-  };
-  match root.to_lowercase().as_ref() {
-    DOMAIN_GITHUB => Ok(Some((Box::new(github::Github::new(conf)?), url))),
-    DOMAIN_JIRA   => Ok(Some((Box::new(jira::Jira::new_with_host(conf, &host)?), url))),
-    _             => Ok(None)
-  }
-}
-
 struct Endpoint {
   name: String,
   route: route::Pattern,
@@ -49,11 +26,7 @@ struct Endpoint {
 }
 
 impl Endpoint {
-  fn url<'a>(&'a self) -> &'a str {
-    &self.url
-  }
-
-  fn url_with_data(&self, mat: &route::Match) -> Result<String, error::Error> {
+  fn url(&self, mat: &route::Match) -> Result<String, error::Error> {
     let mut f = tinytemplate::TinyTemplate::new();
     f.add_template(&self.name, &self.url)?;
     Ok(f.render(&self.name, &mat.vars)?)
@@ -62,11 +35,11 @@ impl Endpoint {
   fn format_response(&self, rsp: &fetch::Response) -> Result<String, error::Error> {
     let data = match rsp.data() {
       Ok(data) => data,
-      Err(err) => return Err(error::Error::Invalid),
+      Err(_)   => return Err(error::Error::Invalid),
     };
     let rsp: serde_json::Value = match serde_json::from_slice(data.as_ref()) {
-      Ok(rsp)  => rsp,
-      Err(err) => return Err(error::Error::Invalid),
+      Ok(rsp) => rsp,
+      Err(_)  => return Err(error::Error::Invalid),
     };
     let mut f = tinytemplate::TinyTemplate::new();
     f.add_template(&self.name, &self.format)?;
@@ -76,6 +49,7 @@ impl Endpoint {
 
 struct Domain {
   config: config::Service,
+  headers: Vec<(String, String)>,
   routes: Vec<Endpoint>,
 }
 
@@ -97,6 +71,9 @@ impl Generic {
       routes: HashMap::from([
         (DOMAIN_GITHUB.to_string(), Domain{
           config: config::Service::from(conf.get(DOMAIN_GITHUB))?,
+          headers: vec![
+            ("Accept".to_string(), "application/vnd.github+json".to_string())
+          ],
           routes: vec![
             Endpoint{
               name: "pr".to_string(),
@@ -109,6 +86,20 @@ impl Generic {
               route: route::Pattern::new("/{org}/{repo}/issues/{num}"),
               url: "https://api.github.com/repos/{org}/{repo}/issues/{num}".to_string(),
               format: "{title} (Issue #{number})".to_string(),
+            },
+          ],
+        }),
+        (DOMAIN_JIRA.to_string(), Domain{
+          config: config::Service::from(conf.get(DOMAIN_JIRA))?,
+          headers: vec![
+            ("Content-Type".to_string(), "application/json".to_string())
+          ],
+          routes: vec![
+            Endpoint{
+              name: "issue".to_string(),
+              route: route::Pattern::new("/browse/{key}"),
+              url: "https://{domain}/rest/api/3/issue/{key}".to_string(),
+              format: "{fields.summary} (Issue {key})".to_string(),
             },
           ],
         }),
@@ -148,9 +139,11 @@ impl Generic {
   }
 
   fn get(&self, domain: &Domain, url: &str) -> reqwest::RequestBuilder {
-    let builder = self.client.get(url)
-      .header("Accept", "application/vnd.github+json")
+    let mut builder = self.client.get(url)
       .header("User-Agent", &format!("Unfurl/{}", VERSION));
+    for (key, val) in &domain.headers {
+      builder = builder.header(key, val);
+    }
     domain.authenticate(builder)
   }
 }
@@ -158,15 +151,15 @@ impl Generic {
 impl Service for Generic {
   fn request(&self, _conf: &config::Config, link: &url::Url) -> Result<reqwest::RequestBuilder, error::Error> {
     match self.find_route(link) {
-      Some((domain, ept, mat)) => Ok(self.get(domain, &ept.url_with_data(&mat)?)),
+      Some((domain, ept, mat)) => Ok(self.get(domain, &ept.url(&mat)?)),
       None                     => Err(error::Error::NotFound),
     }
   }
 
-  fn format(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
+  fn format(&self, _conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
     match self.find_route(link) {
-      Some((domain, ept, mat)) => Ok(ept.format_response(rsp)?),
-      None                     => Err(error::Error::NotFound),
+      Some((_, ept, _)) => Ok(ept.format_response(rsp)?),
+      None              => Err(error::Error::NotFound),
     }
   }
 }
