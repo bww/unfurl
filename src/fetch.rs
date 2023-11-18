@@ -79,7 +79,7 @@ impl Service {
         let x = match rx.recv() {
           Ok(x)    => x,
           Err(err) => {
-            println!("* * * Could not receive: {}", err);
+            println!("*** Could not receive: {}", err);
             return;
           },
         };
