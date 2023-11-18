@@ -60,6 +60,11 @@ pub struct Service {
   pub format: Option<HashMap<String, String>>,
 }
 
+pub trait Authenticator {
+  fn authenticate(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder;
+  fn authenticate_chain<A: Authenticator>(&self, req: reqwest::RequestBuilder, next: Option<A>) -> reqwest::RequestBuilder;
+}
+
 impl Service {
   pub fn new() -> Self {
     Self{
@@ -74,15 +79,27 @@ impl Service {
       None       => Self::new(),
     })
   }
+}
 
-  pub fn authenticate(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+impl Authenticator for Service {
+  fn authenticate(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    self.authenticate_chain::<Service>(req, None)
+  }
+
+  fn authenticate_chain<A: Authenticator>(&self, req: reqwest::RequestBuilder, next: Option<A>) -> reqwest::RequestBuilder {
     let auth = match &self.auth {
       Some(auth) => auth,
-      None       => return req,
+      None       => return match next {
+        Some(next) => next.authenticate(req),
+        None       => return req,
+      },
     };
     let header = match &auth.header {
       Some(header) => header,
-      None         => return req,
+      None       => return match next {
+        Some(next) => next.authenticate(req),
+        None       => return req,
+      },
     };
     req.header("Authorization", header)
   }

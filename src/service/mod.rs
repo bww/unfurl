@@ -4,7 +4,7 @@ use reqwest;
 use addr;
 
 use crate::error;
-use crate::config;
+use crate::config::{self, Authenticator};
 use crate::fetch;
 use crate::route;
 
@@ -57,9 +57,13 @@ struct Domain {
   routes: Vec<Endpoint>,
 }
 
-impl Domain {
+impl config::Authenticator for &Domain {
   fn authenticate(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
-    self.config.authenticate(req)
+    self.config.authenticate_chain::<&Domain>(req, None)
+  }
+
+  fn authenticate_chain<A: config::Authenticator>(&self, req: reqwest::RequestBuilder, next: Option<A>) -> reqwest::RequestBuilder {
+    self.config.authenticate_chain(req, next)
   }
 }
 
@@ -142,20 +146,25 @@ impl Generic {
     None
   }
 
-  fn get(&self, domain: &Domain, url: &str) -> reqwest::RequestBuilder {
+  fn get(&self, conf: &config::Service, domain: &Domain, url: &str) -> reqwest::RequestBuilder {
     let mut builder = self.client.get(url)
       .header("User-Agent", &format!("Unfurl/{}", VERSION));
     for (key, val) in &domain.headers {
       builder = builder.header(key, val);
     }
-    domain.authenticate(builder)
+    conf.authenticate_chain(builder, Some(domain))
+                      //domain.authenticate(builder)
   }
 }
 
 impl Service for Generic {
-  fn request(&self, _conf: &config::Config, link: &url::Url) -> Result<reqwest::RequestBuilder, error::Error> {
+  fn request(&self, conf: &config::Config, link: &url::Url) -> Result<reqwest::RequestBuilder, error::Error> {
+    let host = match link.host_str() {
+      Some(host) => host,
+      None       => return Err(error::Error::Invalid("No host".to_string())),
+    };
     match self.find_route(link) {
-      Some((domain, ept, mat)) => Ok(self.get(domain, &ept.url(link, &mat)?)),
+      Some((domain, ept, mat)) => Ok(self.get(&config::Service::from(conf.get(host))?, domain, &ept.url(link, &mat)?)),
       None                     => Err(error::Error::NotFound),
     }
   }
