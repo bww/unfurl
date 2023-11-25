@@ -1,6 +1,8 @@
 use std::path;
 use std::collections::HashMap;
 
+use serde::{Serialize, Deserialize};
+
 #[derive(Debug, PartialEq)]
 pub struct Match {
   pub vars: HashMap<String, String>,
@@ -18,7 +20,7 @@ impl Match {
   }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Pattern (path::PathBuf);
 
 impl Pattern {

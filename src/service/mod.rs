@@ -1,5 +1,10 @@
+use std::fs;
+use std::path;
+use std::io::Read;
 use std::collections::HashMap;
 
+use serde::{Serialize, Deserialize};
+use serde_yaml;
 use reqwest;
 use addr;
 
@@ -18,6 +23,7 @@ pub trait Service {
   fn format(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error>;
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Endpoint {
   name: String,
   route: route::Pattern,
@@ -51,19 +57,32 @@ impl Endpoint {
   }
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Domain {
-  config: config::Service,
-  headers: Vec<(String, String)>,
+  config: Option<config::Service>,
+  headers: HashMap<String, String>,
   routes: Vec<Endpoint>,
+}
+
+impl Domain {
+  fn set_config(&mut self, conf: config::Service) {
+    self.config = Some(conf);
+  }
 }
 
 impl config::Authenticator for &Domain {
   fn authenticate(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
-    self.config.authenticate_chain::<&Domain>(req, None)
+    match &self.config {
+      Some(conf) => conf.authenticate_chain::<&Domain>(req, None),
+      None       => req,
+    }
   }
 
   fn authenticate_chain<A: config::Authenticator>(&self, req: reqwest::RequestBuilder, next: Option<A>) -> reqwest::RequestBuilder {
-    self.config.authenticate_chain(req, next)
+    match &self.config {
+      Some(conf) => conf.authenticate_chain(req, next),
+      None       => req,
+    }
   }
 }
 
@@ -73,45 +92,20 @@ pub struct Generic {
 }
 
 impl Generic {
-  pub fn new(conf: &config::Config) -> Result<Self, error::Error> {
+  pub fn load_path<P: AsRef<path::Path>>(conf: &config::Config, p: P) -> Result<Self, error::Error> {
+    Self::load_data(conf, fs::File::open(p)?)
+  }
+
+  pub fn load_data<R: Read>(conf: &config::Config, mut r: R) -> Result<Self, error::Error> {
+    let mut data = String::new();
+    r.read_to_string(&mut data)?;
+    let mut domains: HashMap<String, Domain> = serde_yaml::from_str(&data)?;
+    for (k, v) in domains.iter_mut() {
+      v.set_config(config::Service::from(conf.get(k))?);
+    }
     Ok(Self{
       client: reqwest::Client::new(),
-      domains: HashMap::from([
-        (DOMAIN_GITHUB.to_string(), Domain{
-          config: config::Service::from(conf.get(DOMAIN_GITHUB))?,
-          headers: vec![
-            ("Accept".to_string(), "application/vnd.github+json".to_string())
-          ],
-          routes: vec![
-            Endpoint{
-              name: "pr".to_string(),
-              route: route::Pattern::new("/{org}/{repo}/pull/{num}"),
-              url: "https://api.github.com/repos/{org}/{repo}/pulls/{num}".to_string(),
-              format: "{title} (PR #{number})".to_string(),
-            },
-            Endpoint{
-              name: "issue".to_string(),
-              route: route::Pattern::new("/{org}/{repo}/issues/{num}"),
-              url: "https://api.github.com/repos/{org}/{repo}/issues/{num}".to_string(),
-              format: "{title} (Issue #{number})".to_string(),
-            },
-          ],
-        }),
-        (DOMAIN_JIRA.to_string(), Domain{
-          config: config::Service::from(conf.get(DOMAIN_JIRA))?,
-          headers: vec![
-            ("Content-Type".to_string(), "application/json".to_string())
-          ],
-          routes: vec![
-            Endpoint{
-              name: "issue".to_string(),
-              route: route::Pattern::new("/browse/{key}"),
-              url: "https://{domain}/rest/api/3/issue/{key}".to_string(),
-              format: "{fields.summary} (Issue {key})".to_string(),
-            },
-          ],
-        }),
-      ]),
+      domains: domains,
     })
   }
 
@@ -153,7 +147,6 @@ impl Generic {
       builder = builder.header(key, val);
     }
     conf.authenticate_chain(builder, Some(domain))
-                      //domain.authenticate(builder)
   }
 }
 

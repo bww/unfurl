@@ -1,0 +1,13 @@
+github.com:
+  headers:
+    Accept: "application/vnd.github+json"
+  routes:
+    - name: pr
+      route: "/{org}/{repo}/pull/{num}"
+      url: "https://api.github.com/repos/{org}/{repo}/pulls/{num}"
+      format: "{title} (PR #{number})"
+    - name: issue
+      route: "/{org}/{repo}/issues/{num}"
+      url: "https://api.github.com/repos/{org}/{repo}/issues/{num}"
+      format: "{title} (Issue #{number})"
+
