@@ -2,6 +2,7 @@ The following things are included:
 
 * https://github.com/macvim-dev/macvim/issues/579
 * https://github.com/bww/psctl/pull/1
+* https://ecosystem.atlassian.net/browse/AC-2571
 
 And some other stuff.
 
