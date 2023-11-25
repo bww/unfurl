@@ -13,10 +13,9 @@ use crate::config::{self, Authenticator};
 use crate::fetch;
 use crate::route;
 
-pub const DOMAIN_GITHUB: &str = "github.com";
-pub const DOMAIN_JIRA: &str   = "atlassian.net";
-
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const BUILTIN_ROUTES: &str = include_str!("../../conf/routes.yml");
 
 pub trait Service {
   fn request(&self, conf: &config::Config, link: &url::Url) -> Result<reqwest::RequestBuilder, error::Error>;
@@ -94,6 +93,10 @@ pub struct Generic {
 impl Generic {
   pub fn load_path<P: AsRef<path::Path>>(conf: &config::Config, p: P) -> Result<Self, error::Error> {
     Self::load_data(conf, fs::File::open(p)?)
+  }
+
+  pub fn load_default(conf: &config::Config) -> Result<Self, error::Error> {
+    Self::load_data(conf, BUILTIN_ROUTES.as_bytes())
   }
 
   pub fn load_data<R: Read>(conf: &config::Config, mut r: R) -> Result<Self, error::Error> {
