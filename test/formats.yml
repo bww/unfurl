@@ -3,4 +3,7 @@ services:
     format:
       pr: "[{number}] {title} ({url})"
       issue: "[{number}] {title} ({url})"
+  ecosystem.atlassian.net:
+    format:
+      issue: "[{key}] {fields.summary}"
 
