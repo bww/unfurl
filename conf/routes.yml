@@ -10,4 +10,13 @@ github.com:
       route: "/{org}/{repo}/issues/{num}"
       url: "https://api.github.com/repos/{org}/{repo}/issues/{num}"
       format: "{title} (Issue #{number})"
+atlassian.net:
+  headers:
+    Accept: "application/json"
+  routes:
+    - name: issue
+      route: "/browse/{key}"
+      url: "https://{domain}/rest/api/3/issue/{key}"
+      format: "{fields.summary} (Issue {key})"
+
 
