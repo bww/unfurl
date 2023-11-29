@@ -15,6 +15,7 @@ use crate::route;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+const DEFAULT_FORMAT: &str = "<NO FORMAT AVAILABLE>";
 const BUILTIN_ROUTES: &str = include_str!("../../conf/routes.yml");
 
 pub trait Service {
@@ -31,6 +32,10 @@ struct Endpoint {
 }
 
 impl Endpoint {
+  fn name<'a>(&'a self) -> &'a str {
+    &self.name
+  }
+
   fn url(&self, link: &url::Url, mat: &route::Match) -> Result<String, error::Error> {
     let cxt = match link.host() {
       Some(host) => mat.vars_with(HashMap::from([("domain".to_string(), host.to_string())])),
@@ -41,18 +46,8 @@ impl Endpoint {
     Ok(f.render(&self.name, &cxt)?)
   }
 
-  fn format_response(&self, rsp: &fetch::Response) -> Result<String, error::Error> {
-    let data = match rsp.data() {
-      Ok(data) => data,
-      Err(err) => return Err(error::Error::Invalid(format!("Could not read data: {}", err))),
-    };
-    let rsp: serde_json::Value = match serde_json::from_slice(data.as_ref()) {
-      Ok(rsp)  => rsp,
-      Err(err) => return Err(error::Error::Invalid(format!("Could not parse data: {}", err))),
-    };
-    let mut f = tinytemplate::TinyTemplate::new();
-    f.add_template(&self.name, &self.format)?;
-    Ok(f.render(&self.name, &rsp)?)
+  fn format<'a>(&'a self) -> Option<&'a str> {
+    Some(&self.format)
   }
 }
 
@@ -66,6 +61,13 @@ struct Domain {
 impl Domain {
   fn set_config(&mut self, conf: config::Service) {
     self.config = Some(conf);
+  }
+
+  fn format<'a>(&'a self, name: &str) -> Option<&'a str> {
+    match &self.config {
+      Some(conf) => conf.format(name),
+      None       => None,
+    }
   }
 }
 
@@ -167,9 +169,23 @@ impl Service for Generic {
 
   fn format(&self, _conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
     match self.find_route(link) {
-      Some((_, ept, _)) => Ok(ept.format_response(rsp)?),
-      None              => Err(error::Error::NotFound),
+      Some((dom, ept, _)) => Ok(format_response(rsp, ept.name(), dom.format(ept.name()).or(ept.format()).or(Some(DEFAULT_FORMAT)).unwrap())?),
+      None                => Err(error::Error::NotFound),
     }
   }
+}
+
+fn format_response(rsp: &fetch::Response, name: &str, format: &str) -> Result<String, error::Error> {
+  let data = match rsp.data() {
+    Ok(data) => data,
+    Err(err) => return Err(error::Error::Invalid(format!("Could not read data: {}", err))),
+  };
+  let rsp: serde_json::Value = match serde_json::from_slice(data.as_ref()) {
+    Ok(rsp)  => rsp,
+    Err(err) => return Err(error::Error::Invalid(format!("Could not parse data: {}", err))),
+  };
+  let mut f = tinytemplate::TinyTemplate::new();
+  f.add_template(&name, &format)?;
+  Ok(f.render(&name, &rsp)?)
 }
 

@@ -79,6 +79,13 @@ impl Service {
       None       => Self::new(),
     })
   }
+
+  pub fn format<'a>(&'a self, name: &str) -> Option<&'a str> {
+    match &self.format {
+      Some(format) => format.get(name).map(|x| x.as_str()),
+      None         => None,
+    }
+  }
 }
 
 impl Authenticator for Service {
