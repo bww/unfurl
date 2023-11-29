@@ -13,18 +13,32 @@ use crate::error;
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
   #[serde(default = "HashMap::new")]
-  services: HashMap<String, serde_yaml::Value>,
+  services: HashMap<String, Service>,
+  #[serde(skip, default = "Service::new")]
+  default_service: Service,
 }
 
 impl Config {
   pub fn new() -> Config {
     Config{
       services: HashMap::new(),
+      default_service: Service::new(),
     }
   }
 
-  pub fn get<'a>(&'a self, domain: &str) -> Option<&'a serde_yaml::Value> {
+  pub fn service<'a>(&'a self, domain: &str) -> Option<&'a Service> {
     self.services.get(domain)
+  }
+
+  pub fn default_service<'a>(&'a self) -> &'a Service {
+    &self.default_service
+  }
+
+  pub fn service_or_default<'a>(&'a self, domain: &str) -> &'a Service {
+    match self.service(domain) {
+      Some(svc) => svc,
+      None      => self.default_service(),
+    }
   }
 }
 
@@ -49,12 +63,12 @@ pub fn load_data<R: Read>(mut r: R) -> Result<Config, error::Error> {
   Ok(conf)
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Authn {
   pub header: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Service {
   pub auth: Option<Authn>,
   pub format: Option<HashMap<String, String>>,

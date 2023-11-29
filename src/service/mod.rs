@@ -106,7 +106,9 @@ impl Generic {
     r.read_to_string(&mut data)?;
     let mut domains: HashMap<String, Domain> = serde_yaml::from_str(&data)?;
     for (k, v) in domains.iter_mut() {
-      v.set_config(config::Service::from(conf.get(k))?);
+      if let Some(svc) = conf.service(k) {
+        v.set_config(svc.clone());
+      }
     }
     Ok(Self{
       client: reqwest::Client::new(),
@@ -162,7 +164,7 @@ impl Service for Generic {
       None       => return Err(error::Error::Invalid("No host".to_string())),
     };
     match self.find_route(link) {
-      Some((domain, ept, mat)) => Ok(self.get(&config::Service::from(conf.get(host))?, domain, &ept.url(link, &mat)?)),
+      Some((domain, ept, mat)) => Ok(self.get(conf.service_or_default(host), domain, &ept.url(link, &mat)?)),
       None                     => Err(error::Error::NotFound),
     }
   }
@@ -175,9 +177,8 @@ impl Service for Generic {
     match self.find_route(link) {
       Some((dom, ept, _)) => {
         let name = ept.name();
-        let svc = config::Service::from(conf.get(host))?;
-        let format = svc
-          .format(name)
+        let svc = conf.service_or_default(host);
+        let format = svc.format(name)
           .or(dom.format(name))
           .or(ept.format())
           .or(Some(DEFAULT_FORMAT));
