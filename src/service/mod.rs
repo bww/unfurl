@@ -167,10 +167,23 @@ impl Service for Generic {
     }
   }
 
-  fn format(&self, _conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
+  fn format(&self, conf: &config::Config, link: &url::Url, rsp: &fetch::Response) -> Result<String, error::Error> {
+    let host = match link.host_str() {
+      Some(host) => host,
+      None       => return Err(error::Error::Invalid("No host".to_string())),
+    };
     match self.find_route(link) {
-      Some((dom, ept, _)) => Ok(format_response(rsp, ept.name(), dom.format(ept.name()).or(ept.format()).or(Some(DEFAULT_FORMAT)).unwrap())?),
-      None                => Err(error::Error::NotFound),
+      Some((dom, ept, _)) => {
+        let name = ept.name();
+        let svc = config::Service::from(conf.get(host))?;
+        let format = svc
+          .format(name)
+          .or(dom.format(name))
+          .or(ept.format())
+          .or(Some(DEFAULT_FORMAT));
+        Ok(format_response(rsp, name, format.unwrap())?)
+      },
+      None => Err(error::Error::NotFound),
     }
   }
 }
