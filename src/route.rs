@@ -24,7 +24,7 @@ impl Match {
 pub struct Pattern (path::PathBuf);
 
 impl Pattern {
-  pub fn new<P: AsRef<path::Path>>(p: P) -> Pattern {
+  pub fn _new<P: AsRef<path::Path>>(p: P) -> Pattern {
     Pattern(p.as_ref().to_path_buf())
   }
 
@@ -100,20 +100,20 @@ mod tests {
 
   #[test]
   fn equality() {
-    let a = Pattern::new("a/b");
+    let a = Pattern::_new("a/b");
     assert_eq!(a, a);
-    let b = Pattern::new("a/b");
+    let b = Pattern::_new("a/b");
     assert_eq!(a, b);
   }
 
   #[test]
   fn match_path() {
-    let p = Pattern::new("a/b");
+    let p = Pattern::_new("a/b");
     assert_eq!(None, p.match_path("a/c"));
     assert_eq!(None, p.match_path("/a/b"));
     assert_eq!(None, p.match_path("/a/b/"));
 
-    let p = Pattern::new("/");
+    let p = Pattern::_new("/");
     assert_eq!(Some(Match::new_empty()), p.match_path("/"));
     let p = Pattern::new("a/b");
     assert_eq!(Some(Match::new_empty()), p.match_path("a/b"));
@@ -122,7 +122,7 @@ mod tests {
     let p = Pattern::new("a/{b}");
     assert_eq!(Some(Match::new(HashMap::from([("b".to_string(), "Hello".to_string())]))), p.match_path("a/Hello"));
 
-    let p = Pattern::new("/{a}/{b}");
+    let p = Pattern::_new("/{a}/{b}");
     assert_eq!(Some(Match::new(HashMap::from([
       ("a".to_string(), "Anything".to_string()),
       ("b".to_string(), "Hello".to_string()),

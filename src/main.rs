@@ -18,6 +18,8 @@ use crate::service::Service;
 pub struct Options {
   #[clap(long, help="Use the specified configuration")]
   pub config: Option<String>,
+  #[clap(long, help="Use the specified routes definition")]
+  pub routes: Option<String>,
   #[clap(long, help="Enable debugging mode")]
   pub debug: bool,
   #[clap(long, help="Enable verbose output")]
@@ -48,13 +50,18 @@ fn app(opts: &Options) -> Result<(), error::Error> {
   }
 }
 
-fn unfurl<R: Read>(_opts: &Options, conf: &config::Config, mut r: R) -> Result<(), error::Error> {
+fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<(), error::Error> {
   let mut data = String::new();
   r.read_to_string(&mut data)?;
 
   let ftc = fetch::Service::instance();
-  let svc = service::Generic::load_path(conf, "conf/routes.yml")?;
-  // let svc = service::Generic::new(conf)?;
+  let svc = {
+    let mut svc = service::Default::load_default(conf)?;
+    if let Some(routes) = &opts.routes {
+      svc.extend(service::Default::load_path(conf, routes)?);
+    }
+    svc
+  };
 
   let mut text: &str = &data;
   let mut toks: Vec<parse::Token> = Vec::new();

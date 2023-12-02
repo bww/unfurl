@@ -87,13 +87,6 @@ impl Service {
     }
   }
 
-  pub fn from(conf: Option<&serde_yaml::Value>) -> Result<Self, error::Error> {
-    Ok(match conf {
-      Some(conf) => serde_yaml::from_value(conf.clone())?,
-      None       => Self::new(),
-    })
-  }
-
   pub fn format<'a>(&'a self, name: &str) -> Option<&'a str> {
     match &self.format {
       Some(format) => format.get(name).map(|x| x.as_str()),

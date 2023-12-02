@@ -87,18 +87,18 @@ impl config::Authenticator for &Domain {
   }
 }
 
-pub struct Generic {
+pub struct Default {
   client: reqwest::Client,
   domains: HashMap<String, Domain>,
 }
 
-impl Generic {
-  pub fn load_path<P: AsRef<path::Path>>(conf: &config::Config, p: P) -> Result<Self, error::Error> {
-    Self::load_data(conf, fs::File::open(p)?)
-  }
-
+impl Default {
   pub fn load_default(conf: &config::Config) -> Result<Self, error::Error> {
     Self::load_data(conf, BUILTIN_ROUTES.as_bytes())
+  }
+
+  pub fn load_path<P: AsRef<path::Path>>(conf: &config::Config, p: P) -> Result<Self, error::Error> {
+    Self::load_data(conf, fs::File::open(p)?)
   }
 
   pub fn load_data<R: Read>(conf: &config::Config, mut r: R) -> Result<Self, error::Error> {
@@ -147,6 +147,10 @@ impl Generic {
     None
   }
 
+  pub fn extend(&mut self, another: Default) {
+    self.domains.extend(another.domains.into_iter())
+  }
+
   fn get(&self, conf: &config::Service, domain: &Domain, url: &str) -> reqwest::RequestBuilder {
     let mut builder = self.client.get(url)
       .header("User-Agent", &format!("Unfurl/{}", VERSION));
@@ -157,7 +161,7 @@ impl Generic {
   }
 }
 
-impl Service for Generic {
+impl Service for Default {
   fn request(&self, conf: &config::Config, link: &url::Url) -> Result<reqwest::RequestBuilder, error::Error> {
     let host = match link.host_str() {
       Some(host) => host,
