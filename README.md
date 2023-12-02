@@ -24,6 +24,18 @@ Unfurl supports expanding the following URL types out of the box:
 
 You can add support for more services by configuring a routes definition and specifying it on the command line via `--routes <definition.yml>`. The [built-in routes definition file](https://github.com/bww/unfurl/blob/master/conf/routes.yml) can be used as reference. Custom routes are appended to the built-in routes and take prescidence.
 
+The general notion is that Unfurl matches a presentation/browser URL, converts it to an API counterpart (or perhaps just provides suitable headers to the same URL) which represents the same information in a structured form. Then a default format determines how that structured data is rendered into text. The following is illustrative:
+
+```yaml
+github.com:
+  routes:
+    - name: pr
+      route: "/{org}/{repo}/pull/{num}"
+      url: "https://api.github.com/repos/{org}/{repo}/pulls/{num}"
+      format: "{title} (PR #{number})"
+```
+`routes.yml`
+
 ## Authenticating to services
 Out of the box, Unfurl will work as expected for supported public URLs. Often, however, URLs hosted on these services are not public, so you may need to provide some credentials. This can be done via a configuration file, located by default at `$HOME/.unfurl.yml`.
 
@@ -35,7 +47,7 @@ It is also possible to specify how, exactly, URLs are expanded by defining a per
 ```yaml
  services:
 
-    # Provide authentication and custom formatting for GitHub routes. You
+    # We provide authentication and custom formatting for GitHub routes. You
     # cannot define routes in a configuration file, use a route definition
     # file for that.
     github.com:
@@ -45,7 +57,7 @@ It is also possible to specify how, exactly, URLs are expanded by defining a per
         pr: "[{number}] {title} ({url})"
         issue: "[{number}] {title} ({url})"
 
-    # Jira configurations are per-cloud-tenant; specify your domain. (Unfurl
+    # Jira configurations are per-cloud-tenant: specify your domain. (Unfurl
     # will fail over to the base domain, `atlassian.net` in this case, if no
     # exact match is found.)
     treno.atlassian.net: 
@@ -54,9 +66,11 @@ It is also possible to specify how, exactly, URLs are expanded by defining a per
       format:
         issue: "[{key}] {fields.summary}"
     
-    # And so on for whatever other domains you have added support for.
+    # And so on for whatever other domains you have added...
     twitter.com:
       auth:
         header: # ...  
 
 ```
+`$HOME/.unfurl.yml`
+
