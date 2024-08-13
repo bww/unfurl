@@ -9,7 +9,8 @@ github.com:
     - name: issue
       route: "/{org}/{repo}/issues/{num}"
       url: "https://api.github.com/repos/{org}/{repo}/issues/{num}"
-      format: "{title} (Issue #{number})"
+      format: "{title} (issue #{number})"
+
 atlassian.net:
   headers:
     Accept: "application/json"
@@ -17,6 +18,4 @@ atlassian.net:
     - name: issue
       route: "/browse/{key}"
       url: "https://{domain}/rest/api/3/issue/{key}"
-      format: "{fields.summary} (Issue {key})"
-
-
+      format: "{fields.summary} (issue {key})"
