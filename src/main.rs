@@ -1,4 +1,4 @@
-use std::io::{Read};
+use std::io::Read;
 use std::fs;
 use std::collections::HashMap;
 
@@ -104,4 +104,3 @@ fn unfurl<R: Read>(opts: &Options, conf: &config::Config, mut r: R) -> Result<()
 
   Ok(())
 }
-
